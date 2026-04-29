@@ -1,0 +1,29 @@
+google-ads-mcp (GrowME fork)
+============================
+
+This product includes software originally developed by Google LLC, available
+at https://github.com/googleads/google-ads-mcp under the Apache License 2.0.
+
+Original work:
+  Copyright 2026 Google LLC
+  Licensed under the Apache License, Version 2.0
+  https://github.com/googleads/google-ads-mcp
+
+Modifications by GrowME Marketing Inc.:
+  Copyright 2026 GrowME Marketing Inc.
+  Licensed under the Apache License, Version 2.0
+  https://github.com/growmeapps/google-ads-mcp
+
+Summary of GrowME modifications (see CHANGELOG.md for full detail):
+
+  - Added ads_mcp/tools/keyword_planner.py — `generate_keyword_ideas` tool
+    that wraps KeywordPlanIdeaService.GenerateKeywordIdeas, returning
+    historical metrics (search volume, competition, top-of-page CPC bid
+    range) for seed keywords. Read-only.
+  - Updated ads_mcp/server.py to import the new tool module so FastMCP
+    registers it at startup.
+  - Bumped version to 0.0.1.post1+growme.1 (PEP 440 local-version
+    identifier marking this as a downstream fork of upstream 0.0.1).
+
+The original LICENSE file (Apache 2.0) applies to all code in this
+repository, including the GrowME modifications.

@@ -37,3 +37,6 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .nox/
+# GrowME fork: internal AI handoff lives at
+# Marketing/Google Ads/_internal-docs/google-ads-mcp-fork-handoff.md
+CLAUDE.md
