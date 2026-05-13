@@ -5,6 +5,48 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## 0.0.1.post1+growme.2 — 2026-05-13
+
+### Added
+- **`ads_mcp/tools/core.py` → `list_customer_clients`** — new tool that
+  walks an MCC's manager hierarchy via the `customer_client` resource
+  and returns every linked child account (including those inherited
+  through MCC access, which upstream's `list_accessible_customers`
+  omits). Takes optional `manager_customer_id`; defaults to the
+  `GOOGLE_ADS_LOGIN_CUSTOMER_ID` env var. Read-only.
+
+### Changed
+- **`ads_mcp/tools/core.py` → `list_accessible_customers` docstring** —
+  rewritten to make the direct-vs-MCC distinction explicit. Old wording
+  ("customers directly accessible by the user") was technically correct
+  but consistently misled both humans and LLMs into using this tool when
+  they wanted the full MCC roster. New docstring routes callers to the
+  new `list_customer_clients` tool for that case.
+- **`README.md`** — Tools section now documents `list_customer_clients`
+  and `generate_keyword_ideas` (the latter was already shipping in
+  growme.1 but wasn't listed). `list_accessible_customers` description
+  clarified to flag the direct-access limitation.
+
+### Why this matters
+The GrowME Corp MCC (9755129455) has 150 ENABLED child accounts, but
+`list_accessible_customers` only returned 24 — the subset where
+access@growme.ca had been added with a direct user grant. Every other
+account was invisible to the MCP, and the LLM had no way to discover
+them. This made every "audit our accounts" or "find every active
+campaign across the MCC" workflow silently undercount. The new tool
+returns the full set in a single call.
+
+### Files added
+- None.
+
+### Upgrade notes
+- pipx / uv users: `pipx install --force git+...` (or `uv tool install
+  --force git+...`) picks up the new tool on next install.
+- Claude config files don't need updating; the new tool registers
+  automatically through `ads_mcp/server.py`'s `core` import.
+- Restart Claude Desktop / Claude Code after upgrading so the MCP
+  subprocess re-launches with the new tool list.
+
 ## 0.0.1.post1+growme.1 — 2026-04-28
 
 ### Added

@@ -15,8 +15,9 @@ to provide several
 
 - `search`: Retrieves information about the Google Ads account.
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
-- `list_accessible_customers`: Returns ids of customers directly accessible
-  by the user authenticating the call.
+- `list_accessible_customers`: Returns ids of customers where the authenticating user has **direct** access. Does NOT include customers inherited via MCC access — for that, use `list_customer_clients`.
+- `list_customer_clients` *(GrowME fork)*: Lists every customer account linked under a Manager (MCC) account via the `customer_client` resource. Takes an optional `manager_customer_id`; defaults to the `GOOGLE_ADS_LOGIN_CUSTOMER_ID` env var. Use this when the user asks "show me all our managed accounts."
+- `generate_keyword_ideas` *(GrowME fork)*: Wraps `KeywordPlanIdeaService.GenerateKeywordIdeas`. Returns keyword text + historical metrics (avg monthly searches, competition, top-of-page CPC range) for a list of seed keywords in the requested geo + language.
 
 ### Resources available
 
