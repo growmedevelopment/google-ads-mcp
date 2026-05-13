@@ -9,6 +9,78 @@
       "annotations": {
         "readOnlyHint": true
       },
+      "description": "Generate keyword ideas with historical metrics via KeywordPlanIdeaService.\n\nUse this when a marketer needs search volume, competition level, and\ntop-of-page CPC bid ranges for a list of seed keywords \u2014 typical\nuse case is scoping a new client brief or expanding a keyword list\nduring campaign planning.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "description": "10-digit Google Ads customer ID without dashes\n(e.g. \"1234567890\"). Must be a customer the OAuth user\nhas access to \u2014 typically the MCC, or any child account.",
+            "type": "string"
+          },
+          "geo_target_ids": {
+            "description": "list of geo target constant IDs (numeric strings).\nCommon values:\n  \"2840\" = United States\n  \"2124\" = Canada\n  \"2826\" = United Kingdom\n  \"2036\" = Australia\n  \"2356\" = India\nPass multiple to broaden geographic scope, e.g.\n[\"2124\", \"2840\"] for Canada + US.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "language_id": {
+            "default": "1000",
+            "description": "language constant ID (numeric string). Defaults to\n\"1000\" = English. Other useful values:\n  \"1003\" = Spanish\n  \"1001\" = German\n  \"1002\" = French\n  \"1019\" = Portuguese",
+            "type": "string"
+          },
+          "network": {
+            "default": "GOOGLE_SEARCH",
+            "description": "which Google network to source data from. Options:\n  \"GOOGLE_SEARCH\" (default, Search only)\n  \"GOOGLE_SEARCH_AND_PARTNERS\" (includes Search Network partners)",
+            "type": "string"
+          },
+          "page_size": {
+            "default": 1000,
+            "description": "max keyword ideas to return. Default 1000 (KP's hard\ncap per call). Lowering doesn't save quota \u2014 each call is\n1 operation regardless of returned-row count.",
+            "type": "integer"
+          },
+          "seed_keywords": {
+            "description": "list of seed terms to expand from. Example:\n[\"criminal defense lawyer Calgary\", \"DUI lawyer Calgary\"].",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "customer_id",
+          "seed_keywords",
+          "geo_target_ids"
+        ],
+        "type": "object"
+      },
+      "name": "generate_keyword_ideas",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true
+      },
       "description": "Retrieves the selectable, filterable, and sortable fields for a specific Google Ads resource,\nincluding compatible metrics and segments.\n\nUse this tool to find out which fields you can select, filter by, or sort by\nwhen querying a specific resource (e.g., 'campaign', 'ad_group').\nThis tool also returns metrics and segments that can be selected with the resource.\nTheir names start with 'metrics.' and 'segments.' respectively.\n\nDo not guess fields, you MUST use this tool to discover them before constructing a query for the\n`search` tool.\n\nThe responses of this tool should be cached, as they don't change frequently.",
       "inputSchema": {
         "additionalProperties": false,
@@ -38,7 +110,7 @@
       "annotations": {
         "readOnlyHint": true
       },
-      "description": "Returns ids of customers directly accessible by the user authenticating the call.\n\nUse this tool first to discover available customer IDs if the user hasn't\nprovided one. Most other tools require a valid customer ID as input.\n\nReturns:\n    List[str]: A list of customer IDs.",
+      "description": "Returns customer IDs where the authenticating user has DIRECT access.\n\nIMPORTANT \u2014 what this does NOT return: customers linked through a Manager\n(MCC) account via the manager hierarchy. If the authenticating user is a\nmember of an MCC but does not have a direct user grant on each child\naccount, those child accounts will NOT appear here. The result count will\nbe much smaller than \"all accounts under the MCC.\"\n\nFor \"show me every account under our MCC\" use `list_customer_clients`\ninstead \u2014 that one walks the manager hierarchy via the `customer_client`\nresource and returns every linked account (including ones inherited\nthrough MCC access).\n\nUse this tool when you specifically need the list of customers the\nOAuth user has direct user-level access on (e.g., to confirm the\nrefresh-token user is set up correctly).\n\nReturns:\n    List[str]: A list of customer IDs (no `customers/` prefix).",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {},
@@ -50,6 +122,52 @@
           "result": {
             "items": {
               "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "List every customer account linked under a Manager (MCC) account.\n\nUse this tool \u2014 NOT `list_accessible_customers` \u2014 whenever the user asks\nfor \"all client accounts under our MCC,\" \"every account we manage,\" or\nsimilar. It walks the manager hierarchy via the `customer_client`\nresource so child accounts inherited through MCC access are included.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "manager_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "10-digit MCC ID, no dashes. If omitted, defaults\nto the GOOGLE_ADS_LOGIN_CUSTOMER_ID environment variable the\nserver was launched with (the org's primary MCC)."
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_customer_clients",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
             },
             "type": "array"
           }

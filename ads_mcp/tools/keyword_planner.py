@@ -104,10 +104,7 @@ def generate_keyword_ideas(
     request.customer_id = customer_id.replace("-", "")
     request.language = googleads_service.language_constant_path(language_id)
     request.geo_target_constants.extend(
-        [
-            googleads_service.geo_target_constant_path(g)
-            for g in geo_target_ids
-        ]
+        [googleads_service.geo_target_constant_path(g) for g in geo_target_ids]
     )
     request.include_adult_keywords = False
     request.keyword_plan_network = client.enums.KeywordPlanNetworkEnum[network]
@@ -141,9 +138,8 @@ def generate_keyword_ideas(
                         else None
                     ),
                     "low_cpc": (m.low_top_of_page_bid_micros or 0) / 1_000_000,
-                    "high_cpc": (
-                        m.high_top_of_page_bid_micros or 0
-                    ) / 1_000_000,
+                    "high_cpc": (m.high_top_of_page_bid_micros or 0)
+                    / 1_000_000,
                 }
             )
         return out
