@@ -40,3 +40,9 @@ coverage.xml
 # GrowME fork: internal AI handoff lives at
 # Marketing/Google Ads/_internal-docs/google-ads-mcp-fork-handoff.md
 CLAUDE.md
+
+# GrowME fork: NEVER commit OAuth client secrets / ADC files that may be
+# dropped into the working tree during credential rotations. Real
+# credentials live under ~/.config/growme-ads/.
+client_secret*.json
+adc*.json

@@ -5,6 +5,74 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## OAuth migrated `growme-217600` → `growme-ads` (#517652724337) — 2026-05-20
+
+### Why
+The old GCP hub project `growme-217600` (#1085020492895) was suspended
+2026-05-19 for a leaked-key abuse incident, reinstated 2026-05-20, and
+**every OAuth client under it was deleted** as part of the post-recovery
+hub teardown. The Desktop OAuth client the team MCP used
+(`1085020492895-aldkh0ch47e9tt260rdsldoqj1evjsld.apps.googleusercontent.com`)
+is gone — calls against it now return `deleted_client`. A new dedicated
+GCP project was provisioned to host this MCP's OAuth client cleanly,
+away from the now-decoupled hub.
+
+### New GCP project (replaces growme-217600 for this MCP)
+- **Project ID:** `growme-ads`
+- **Project number:** `517652724337`
+- **Folder:** GrowME Internal (387614648962)
+- **APIs enabled:** `googleads.googleapis.com`
+- **Billing:** `01A67F-17D7E9-CFA36D` (GrowME Marketing Billing)
+- **Hardened:** $10 CAD budget cap, 50/90/100% billing alerts
+- **New Desktop OAuth client:** `517652724337-vn43qklsp8e4f6qpqlqlkdgr8j7ud04g.apps.googleusercontent.com` (type: `installed`, consent screen: "GrowME Google Ads", user type: Internal — no unverified-app warning)
+
+### Team re-auth required
+Every team member (Ammar, Abas, Grace) must:
+1. Pull the new `client_secret.json` from 1Password to
+   `~/.config/growme-ads/client_secret.json` (chmod 600). Distribute via
+   1Password only — NEVER via Slack/email/chat.
+2. Delete the stale `~/.config/growme-ads/client_secret_desktop.json` if
+   present (was the old hub one, now dead).
+3. Re-mint ADC:
+   ```shell
+   gcloud auth application-default login \
+     --client-id-file="$HOME/.config/growme-ads/client_secret.json" \
+     --scopes=https://www.googleapis.com/auth/adwords,https://www.googleapis.com/auth/cloud-platform
+   ```
+   **Sign in as `access@growme.ca`** in the Google account picker (NOT a
+   personal Google account — the MCC manager grants live on access@).
+4. `cp ~/.config/gcloud/application_default_credentials.json ~/.config/growme-ads/adc.json && chmod 600 ~/.config/growme-ads/adc.json`.
+5. Restart Claude Desktop / Claude Code so the MCP subprocess re-picks
+   up the new ADC.
+6. Smoke-check: `list_customer_clients` should return ~150 ENABLED
+   accounts under MCC `9755129455`.
+
+### Account-level credentials that did NOT change
+- `GOOGLE_ADS_DEVELOPER_TOKEN` — MCC-bound, still valid (in 1Password and
+  `apps/google-ads/.env.local`).
+- `GOOGLE_ADS_LOGIN_CUSTOMER_ID = 9755129455` — MCC, unchanged.
+- Claude `mcpServers.google-ads.env` block in `~/.claude/settings.json`
+  references the ADC file path + the two env vars above — all
+  project-agnostic. No edit needed.
+
+### Source code
+Credential rotation only. No package, tool surface, or version change.
+The on-disk filename (`client_secret.json`) and ADC path
+(`~/.config/growme-ads/adc.json`) are unchanged; only what each file
+contains has been re-issued under the new GCP project.
+
+### Cross-reference
+- Incident report:
+  `Code/ops/gcp-audit/reports/post-recovery-growme-217600-2026-05-20.md`.
+
+### Files changed in this entry
+- `CHANGELOG.md` — this entry.
+- `CLAUDE.md` — Authentication section + Resume Point updated to
+  reference the new GCP project / OAuth client.
+- `.gitignore` — added `client_secret*.json` and `adc*.json` guards so a
+  credential file dropped into the working tree during future rotations
+  cannot be accidentally committed.
+
 ## 0.0.1.post1+growme.2 — 2026-05-13
 
 ### Added
