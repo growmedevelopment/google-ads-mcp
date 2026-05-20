@@ -4,14 +4,14 @@ This repo contains the source code for running an
 [MCP](https://modelcontextprotocol.io) server that interacts with the
 [Google Ads API](https://developers.google.com/google-ads/api).
 
-## Tools
+## tools
 
 The server uses the
 [Google Ads API](https://developers.google.com/google-ads/api/reference/rpc/latest/overview)
 to provide several
-[Tools](https://modelcontextprotocol.io/docs/concepts/tools) and [Resources](https://modelcontextprotocol.io/docs/concepts/tools) for use with LLMs and AI agents.
+[tools](https://modelcontextprotocol.io/docs/concepts/tools) and [Resources](https://modelcontextprotocol.io/docs/concepts/tools) for use with LLMs and AI agents.
 
-### Tools available
+### tools available
 
 - `search`: Retrieves information about the Google Ads account.
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.

@@ -22,7 +22,7 @@ diverge on.
   but consistently misled both humans and LLMs into using this tool when
   they wanted the full MCC roster. New docstring routes callers to the
   new `list_customer_clients` tool for that case.
-- **`README.md`** — Tools section now documents `list_customer_clients`
+- **`README.md`** — tools section now documents `list_customer_clients`
   and `generate_keyword_ideas` (the latter was already shipping in
   growme.1 but wasn't listed). `list_accessible_customers` description
   clarified to flag the direct-access limitation.
@@ -77,7 +77,7 @@ services. We need direct keyword data in Claude conversations for new
 client briefs and ongoing campaign expansion, so we added the missing
 tool here. Distribution: pipx/uv install from
 `git+https://github.com/growmeapps/google-ads-mcp.git`. The
-`Marketing/ads-mcp-installer/` project's `MCP_PIPX_SOURCE` constant
+`marketing/ads-mcp-installer/` project's `MCP_PIPX_SOURCE` constant
 points at this fork instead of upstream as of the same date.
 
 ### Upstream sync plan
