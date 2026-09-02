@@ -5,6 +5,93 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## 0.0.1.post1+growme.4 — 2026-09-02 — fix what +growme.3 missed (paging, classification, CI lint)
+
+An adversarial review of `+growme.3` (three refuters on the diagnosis, three
+code lenses on the diff) found two blockers and several real defects. The
+diagnosis held; the fix did not, in these places:
+
+### Blockers
+- **Every page after the first bypassed the pacer, the retry and the error
+  conversion.** `generate_keyword_ideas` returns a lazy pager, and
+  `+growme.3` returned that pager from inside the protected block: the
+  `for idea in response:` loop then issued one fresh RPC per `next_page_token`,
+  back to back, outside everything the change existed to add. A 429 on page 2
+  escaped as a raw `ResourceExhausted` — the original bug, reintroduced on the
+  fix's own happy path, and a regression against the pre-fix code where that
+  loop at least sat inside `except GoogleAdsException`. Paging is now explicit
+  (`page_token`), so each page is an independent RPC through the pacer and the
+  retry. Driving the pager's own generator was tried and rejected: once a page
+  fetch raises, that generator is finished, so a retry silently resumes at "no
+  more pages" and truncates the result instead of failing.
+- **CI lint failed.** `noxfile.py` runs `black --check -l 80`; the new files
+  were formatted at black's default 88. Both are now formatted at 80 and the
+  exact CI command exits 0. (Commit `0fc4a0a` was this same mistake on this
+  same file, so it is now checked with the repo's own command before pushing.)
+
+### Correctness
+- **The daily-vs-rate classifier ignored `rate_scope`, the field that actually
+  separates them.** It matched free text for "day"/"daily"/"operations", while
+  Google's documented `rate_name` examples ("Requests per account", "Get
+  requests for standard access") contain none of those, and `QuotaRateScope`
+  spells it out: ACCOUNT is the per-customer bucket, DEVELOPER the token's
+  daily one. A real daily-cap rejection was therefore reported to the model as
+  the per-second limit and retried against an exhausted quota. Scope is now
+  read first; `rate_name` is a fallback and needs an explicit day token, since
+  "operations" alone also appears in per-minute buckets.
+- **A quota rejection with no detail is now reported as ambiguous, not as the
+  rate limit.** Google answers both limits with the same code; when nothing
+  distinguishes them the tool says so, says which is likelier and why, and
+  gives the 60-second test that separates them.
+- **The QuotaError details are recovered rather than discarded.** The library's
+  `Interceptor` short-circuits gRPC RESOURCE_EXHAUSTED, returning the raw
+  RpcError without building a `GoogleAdsException` — which is why the old
+  handler never saw these. `from_grpc_error` keeps the original error, so the
+  trailing metadata is now searched for a `GoogleAdsFailure` and parsed when
+  present; the metadata keys are logged when it is absent, so one real
+  rejection settles whether Google attaches one. (`+growme.3` asserted it does
+  not. Nothing had ever checked; the reproduction only captured `str(exc)`.)
+- `TooManyRequests` is caught rather than only its `ResourceExhausted` subclass.
+- The pacer is keyed on customer ID, matching the per-CID limit the docstring
+  already advises callers to exploit, instead of one global gate.
+- The pacer refuses to queue a caller longer than 10 s (FastMCP's sync-tool
+  pool is 40 threads and the tool has no timeout, so an unbounded queue could
+  stall every other tool in the server); it raises a ToolError telling the
+  model to serialize instead.
+- `assert` on the terminal invariant replaced with a real error (asserts vanish
+  under `python -O`), and the proto type lookups hoisted out of the batch loop
+  (each one builds a fresh `GoogleAdsClient` and credentials).
+
+### Honesty about results
+- `page_size` is documented correctly: rows per PAGE (API max 10,000), not a
+  cap on the result. The tool walks every page, so results are capped at 2,000
+  rows with a logged warning, and a page costs its own operation and its own
+  rate-limit slot — a smaller `page_size` means MORE requests, not fewer.
+  `+growme.3` still claimed "each call is 1 operation regardless of returned-row
+  count", which paging makes false.
+
+### Tests — 30 in this file, 48 total
+Mutation-checked, not just added: replacing the pacer lock with a null context
+now fails exactly one test (it previously failed none). New coverage for
+request shape (language, geo targets, adult filter, page size, network enum,
+per batch), multi-page merge and page-token round-trips, a 429 on a later page
+raising rather than truncating, the result cap, per-customer pacing, the queue
+ceiling, scope-based classification in both directions, ambiguous-429 wording,
+and trailing-metadata recovery. Pacer waits and retry backoffs now go through
+separate indirections, so tests no longer patch stdlib `time.sleep` globally.
+
+### Also
+- `fastmcp` pinned to `>=4.0,<5`: the smoke goldens encode one exact
+  serialization, and an unpinned resolver turns that job red on someone else's
+  release, whose reflex fix is to regenerate the golden.
+- ⚠️ **Known regression absorbed by the +growme.3 golden regeneration, recorded
+  here rather than left silent:** under fastmcp 4 the four resources lost their
+  declared `idempotentHint`/`readOnlyHint` annotations on the wire, and the
+  `search` tool's six parameter descriptions vanished from its inputSchema (its
+  raw "Args:" block leaks into the description instead). Both are real losses in
+  what the model sees, neither is caused by this change, and fixing `search`'s
+  schema belongs in its own commit.
+
 ## 0.0.1.post1+growme.3 — 2026-09-01 — pace + retry `generate_keyword_ideas` (the "429 quota" ticket)
 
 ### Why
