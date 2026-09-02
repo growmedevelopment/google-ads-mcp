@@ -16,7 +16,10 @@ Cloud Monitoring for `growme-ads` shows no day above ~210 Google Ads API request
 429 since 2026-07-08 (36: 35 on `KeywordPlanIdeaService.GenerateKeywordIdeas` from
 the MCP, 1 on `GenerateKeywordHistoricalMetrics` from the forecast app) sat in a
 minute that also returned 200s, and the same bursts exist on 07-16, 08-05 and 08-18,
-weeks before the ticket. Google meters the Keyword Planning
+weeks before the ticket. The API-version label separates the two callers on this account: every 429 is on
+`v24` (this Python MCP), while the forecast app's Node client is `v23` and took one rejection in 42 days.
+(`request_count` counts requests; for GenerateKeywordIdeas one request is one operation, so the MCP's own
+spend really is ~1.4% of the cap.) Google meters the Keyword Planning
 methods separately: **1 request per second per customer ID**. An LLM that fires
 several keyword-idea calls in one turn trips it at once.
 
