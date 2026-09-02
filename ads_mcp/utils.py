@@ -121,6 +121,29 @@ def format_output_row(row: proto.Message, attributes):
     }
 
 
+def quota_tool_error_message(ex) -> str:
+    """Explains a bare HTTP 429 for tools that do not do their own quota
+    handling.
+
+    Google answers both the developer token's daily operations quota and its
+    per-method rate limits with RESOURCE_EXHAUSTED, and the client library's
+    ExceptionInterceptor short-circuits that status: it returns the raw
+    RpcError without building a GoogleAdsException, which `wrap_method` then
+    remaps to `api_core.ResourceExhausted`. Tools that only catch
+    GoogleAdsException therefore leak the raw 429 to the model, which has
+    historically read it as "the daily cap" and stopped work on a limit that
+    clears in seconds (see the keyword_planner module docstring)."""
+    return (
+        f"Google Ads API quota error: {ex}. Google returns this same code for "
+        "a short-term rate limit and for the developer token's daily "
+        "operations quota (15,000 per sliding 24 hours on Basic Access), and "
+        "sent nothing here that separates them. A rate limit is far likelier "
+        "and clears in seconds: stop issuing calls in parallel, wait a few "
+        "seconds and try once more. Only if a single call still fails after "
+        "60 seconds of quiet should the daily quota be reported to the user."
+    )
+
+
 def get_gaql_resources_filepath():
     package_root = importlib.resources.files("ads_mcp")
     file_path = package_root.joinpath(_GAQL_FILENAME)

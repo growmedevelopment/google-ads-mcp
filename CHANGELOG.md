@@ -80,6 +80,15 @@ ceiling, scope-based classification in both directions, ambiguous-429 wording,
 and trailing-metadata recovery. Pacer waits and retry backoffs now go through
 separate indirections, so tests no longer patch stdlib `time.sleep` globally.
 
+### The same 429 could still escape from the other tools
+`search` and `list_customer_clients` caught only `GoogleAdsException` too, so
+the identical raw 429 could reach the model from the highest-volume tool and
+reproduce the same "daily cap" reading on a different surface. Both now catch
+`TooManyRequests` and raise `utils.quota_tool_error_message(ex)`, which states
+that Google uses one code for both limits, that a rate limit is far likelier
+and clears in seconds, and gives the 60-second test. They do NOT get the 1.1 s
+pacer: they are not Keyword Planning methods and are not metered that way.
+
 ### Also
 - `fastmcp` pinned to `>=4.0,<5`: the smoke goldens encode one exact
   serialization, and an unpinned resolver turns that job red on someone else's

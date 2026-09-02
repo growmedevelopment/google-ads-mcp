@@ -135,3 +135,31 @@ class TestSearch(unittest.TestCase):
             "Google Ads API Error: Invalid field name", str(context.exception)
         )
         self.assertIn("Request ID: req-123", str(context.exception))
+
+
+class TestSearchQuotaErrors(unittest.TestCase):
+    """A bare HTTP 429 must not reach the model unexplained (GrowME fork)."""
+
+    @patch("ads_mcp.utils.get_googleads_service")
+    def test_bare_429_becomes_an_explained_tool_error(self, mock_get_service):
+        from fastmcp.exceptions import ToolError
+        from google.api_core import exceptions as api_exceptions
+
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+        mock_service.search_stream.side_effect = (
+            api_exceptions.ResourceExhausted(
+                "Resource has been exhausted (e.g. check quota)."
+            )
+        )
+
+        with self.assertRaises(ToolError) as ctx:
+            search.search(
+                customer_id="1234567890",
+                fields=["campaign.id"],
+                resource="campaign",
+            )
+        message = str(ctx.exception)
+        self.assertIn("quota error", message)
+        self.assertIn("rate limit is far likelier", message)
+        self.assertIn("15,000", message)

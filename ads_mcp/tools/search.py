@@ -20,6 +20,7 @@ from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 import ads_mcp.utils as utils
 from google.ads.googleads.errors import GoogleAdsException
+from google.api_core import exceptions as api_exceptions
 from fastmcp.exceptions import ToolError
 
 
@@ -81,6 +82,10 @@ def search(
         raise ToolError(
             f"Request ID: {ex.request_id}\n" + "\n".join(error_msgs)
         )
+    except api_exceptions.TooManyRequests as ex:
+        # A quota rejection never arrives as a GoogleAdsException; see
+        # utils.quota_tool_error_message.
+        raise ToolError(utils.quota_tool_error_message(ex))
 
 
 def _search_tool_description() -> str:

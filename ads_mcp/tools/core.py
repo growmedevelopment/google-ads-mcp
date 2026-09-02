@@ -22,6 +22,7 @@ from fastmcp.exceptions import ToolError
 import ads_mcp.utils as utils
 
 from google.ads.googleads.errors import GoogleAdsException
+from google.api_core import exceptions as api_exceptions
 from google.ads.googleads.v24.services.types.customer_service import (
     ListAccessibleCustomersResponse,
 )
@@ -136,3 +137,7 @@ def list_customer_clients(
         raise ToolError(
             f"Request ID: {ex.request_id}\n" + "\n".join(error_msgs)
         )
+    except api_exceptions.TooManyRequests as ex:
+        # A quota rejection never arrives as a GoogleAdsException; see
+        # utils.quota_tool_error_message.
+        raise ToolError(utils.quota_tool_error_message(ex))
