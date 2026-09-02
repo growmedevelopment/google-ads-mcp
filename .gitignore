@@ -49,3 +49,8 @@ adc*.json
 
 # macOS AppleDouble files (external volumes)
 ._*
+
+# Never commit a local env file dropped in during credential work
+.env
+.env.*
+!.env.example

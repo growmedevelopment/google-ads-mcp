@@ -70,13 +70,13 @@ To enable it, set the following environment variables:
 
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID`: Your Google Cloud OAuth 2.0 Client ID.
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: Your Google Cloud OAuth 2.0 Client Secret.
-- `GOOGLE_ADS_MCP_BASE_URL`: (Optional) The base URL where the server is accessible (defaults to `http://localhost:8000`).
+- `GOOGLE_ADS_MCP_BASE_URL`: (Optional) The base URL where the server is accessible (defaults to `http://localhost:8080`).
 
 Once this is enabled, you can authenticate to the API through your MCP client: for example, in Gemini CLI, the command `/mcp auth google-ads-mcp` triggers the authentication flow.
 
 When these variables are set, the server automatically switches to the `streamable-http` transport (SSE/HTTP) instead of `stdio`.
 
-You will need to run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8000/mcp`).
+You will need to run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8080/mcp`).
 
 #### Option 2: Configure credentials using Application Default Credentials
 
@@ -142,14 +142,14 @@ Create or edit the file at `~/.gemini/settings.json`, adding your server
 
 - Option 1: Using FastMCP OAuth Proxy (Streamable HTTP)
 
-  You can run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8000/mcp`).
+  You can run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8080/mcp`).
   This also allows using FastMCP's [OAuth proxy](https://gofastmcp.com/servers/auth/oauth-proxy) feature for dynamic user authentication.
 
     ```json
     {
       "mcpServers": {
         "google-ads-mcp": {
-          "httpUrl":"http://localhost:8000/mcp",
+          "httpUrl":"http://localhost:8080/mcp",
           "env": {
             "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",
             "GOOGLE_ADS_DEVELOPER_TOKEN": "YOUR_DEVELOPER_TOKEN"                        
@@ -179,7 +179,7 @@ Create or edit the file at `~/.gemini/settings.json`, adding your server
           "args": [
             "run",
             "--spec",
-            "git+https://github.com/googleads/google-ads-mcp.git",
+            "git+https://github.com/growmedevelopment/google-ads-mcp.git",
             "google-ads-mcp"
           ],
           "env": {
@@ -202,7 +202,7 @@ Create or edit the file at `~/.gemini/settings.json`, adding your server
           "args": [
             "run",
             "--spec",
-            "git+https://github.com/googleads/google-ads-mcp.git",
+            "git+https://github.com/growmedevelopment/google-ads-mcp.git",
             "google-ads-mcp"
           ],
           "env": {
@@ -231,7 +231,7 @@ The final file will look like this:
         "args": [
           "run",
           "--spec",
-          "git+https://github.com/googleads/google-ads-mcp.git",
+          "git+https://github.com/growmedevelopment/google-ads-mcp.git",
           "google-ads-mcp"
         ],
         "env": {

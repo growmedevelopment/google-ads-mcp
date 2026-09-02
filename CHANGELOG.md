@@ -70,7 +70,7 @@ diagnosis held; the fix did not, in these places:
   `+growme.3` still claimed "each call is 1 operation regardless of returned-row
   count", which paging makes false.
 
-### Tests — 30 in this file, 48 total
+### Tests — 30 in this file, 49 total
 Mutation-checked, not just added: replacing the pacer lock with a null context
 now fails exactly one test (it previously failed none). New coverage for
 request shape (language, geo targets, adult filter, page size, network enum,
@@ -100,6 +100,32 @@ pacer: they are not Keyword Planning methods and are not metered that way.
   raw "Args:" block leaks into the description instead). Both are real losses in
   what the model sees, neither is caused by this change, and fixing `search`'s
   schema belongs in its own commit.
+
+### Documentation corrections
+
+A staleness audit of this repo's docs against the actual code and remotes found
+three claims that were wrong in ways a reader would act on:
+
+- **Every `pipx` / `uv tool install` snippet in `README.md` pointed at
+  `googleads/google-ads-mcp`, the upstream repo.** Anyone following the README
+  installed upstream, which has neither `list_customer_clients` nor
+  `generate_keyword_ideas`, both of which the same README documents two screens
+  earlier. All three snippets now point at `growmedevelopment/google-ads-mcp`,
+  matching this repo's `origin` and the installer's `MCP_PIPX_SOURCE`.
+- **`README.md` gave the default base URL as `http://localhost:8000` in four
+  places.** `coordinator.py:28` defaults `GOOGLE_ADS_MCP_BASE_URL` to
+  `http://localhost:8080`, so the copy-paste client config connected to a port
+  nothing was bound to. All four now read 8080.
+- **The `+growme.4` distribution note named the fork `growmeapps`.** The
+  organisation is `growmedevelopment`, per `origin`, `pyproject.toml`, and the
+  installer constant the same sentence cross-references.
+
+Test count in the `+growme.4` entry corrected from 48 to 49: commit `7ee756d`
+added one test after `6cfd773` wrote that line, and both commits ship under this
+same unreleased version.
+
+Note for the next upstream merge: the README install-URL change is a deliberate
+fork divergence and will conflict with upstream. Keep ours.
 
 ## 0.0.1.post1+growme.3 — 2026-09-01 — pace + retry `generate_keyword_ideas` (the "429 quota" ticket)
 
@@ -318,7 +344,7 @@ Upstream's MCP only ships two tools (`search` for GAQL, plus
 services. We need direct keyword data in Claude conversations for new
 client briefs and ongoing campaign expansion, so we added the missing
 tool here. Distribution: pipx/uv install from
-`git+https://github.com/growmeapps/google-ads-mcp.git`. The
+`git+https://github.com/growmedevelopment/google-ads-mcp.git`. The
 `marketing/ads-mcp-installer/` project's `MCP_PIPX_SOURCE` constant
 points at this fork instead of upstream as of the same date.
 
