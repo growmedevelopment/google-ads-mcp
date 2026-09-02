@@ -1,6 +1,6 @@
 [project]
 name = "google-ads-mcp"
-version = "0.0.1.post1+growme.2"
+version = "0.0.1.post1+growme.3"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
@@ -37,3 +37,6 @@ upstream = "https://github.com/googleads/google-ads-mcp"
 [project.scripts]
 google-ads-mcp = "ads_mcp.server:run_server"
 google-ads-mcp-update-gaql = "ads_mcp.update_references:update_gaql_resource_file"
+
+[tool.pytest.ini_options]
+addopts = "--ignore-glob=*/._*"

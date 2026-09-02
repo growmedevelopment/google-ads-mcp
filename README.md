@@ -17,7 +17,7 @@ to provide several
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
 - `list_accessible_customers`: Returns ids of customers where the authenticating user has **direct** access. Does NOT include customers inherited via MCC access — for that, use `list_customer_clients`.
 - `list_customer_clients` *(GrowME fork)*: Lists every customer account linked under a Manager (MCC) account via the `customer_client` resource. Takes an optional `manager_customer_id`; defaults to the `GOOGLE_ADS_LOGIN_CUSTOMER_ID` env var. Use this when the user asks "show me all our managed accounts."
-- `generate_keyword_ideas` *(GrowME fork)*: Wraps `KeywordPlanIdeaService.GenerateKeywordIdeas`. Returns keyword text + historical metrics (avg monthly searches, competition, top-of-page CPC range) for a list of seed keywords in the requested geo + language.
+- `generate_keyword_ideas` *(GrowME fork)*: Wraps `KeywordPlanIdeaService.GenerateKeywordIdeas`. Returns keyword text + historical metrics (avg monthly searches, competition, top-of-page CPC range) for a list of seed keywords in the requested geo + language. Google rate-limits this method to **1 request per second per customer ID**, so the tool paces calls 1.1 s apart inside the server, retries a quota rejection after Google's stated delay, batches more than 20 seeds automatically, and reports in its error whether a rejection was the per-second rate limit or the daily operations quota. Call it once at a time with up to 20 seeds per call; never in parallel.
 
 ### Resources available
 

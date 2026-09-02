@@ -46,3 +46,6 @@ CLAUDE.md
 # credentials live under ~/.config/growme-ads/.
 client_secret*.json
 adc*.json
+
+# macOS AppleDouble files (external volumes)
+._*

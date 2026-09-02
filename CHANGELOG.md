@@ -5,6 +5,81 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## 0.0.1.post1+growme.3 — 2026-09-01 — pace + retry `generate_keyword_ideas` (the "429 quota" ticket)
+
+### Why
+Abas kept getting `429 ... Resource has been exhausted (e.g. check quota)` from
+`generate_keyword_ideas` during keyword research (Asana "MCP Quota Issues",
+2026-08-19 onward) and Claude read it as the Basic Access daily cap. It was not.
+Cloud Monitoring for `growme-ads` shows no day above ~210 Google Ads API requests
+(42-day peak 208 on 2026-08-05; the cap is 15,000 over a sliding 24 h window). Every
+429 since 2026-07-08 (36: 35 on `KeywordPlanIdeaService.GenerateKeywordIdeas` from
+the MCP, 1 on `GenerateKeywordHistoricalMetrics` from the forecast app) sat in a
+minute that also returned 200s, and the same bursts exist on 07-16, 08-05 and 08-18,
+weeks before the ticket. Google meters the Keyword Planning
+methods separately: **1 request per second per customer ID**. An LLM that fires
+several keyword-idea calls in one turn trips it at once.
+
+Reproduced 2026-09-01 against the live API (same developer token, MCC and GCP
+project as the team installs, a different OAuth client; page_size 1000 and 50):
+4 simultaneous calls pass; 8 simultaneous calls get 5 rejections and the next
+call is rejected too. Enforcement behaves as a burst of about 4 in flight
+refilling about once a second, so Google's "60 requests per 60 seconds" wording
+is not the operative rule. The scope (per customer ID rather than per token) is
+consistent with the documented per-CID limit and identified by elimination. The rejection arrives as
+`google.api_core.exceptions.ResourceExhausted` (a bare HTTP 429 from the API
+front end), **not** as a `GoogleAdsException` carrying a `QuotaError`, so the
+tool's `except GoogleAdsException` never saw it and the raw 429 reached the
+model. With the change below, 8 simultaneous calls through the tool function
+(in-process, not via the stdio server) succeed 8/8 (paced over ~9 s).
+
+### What changed
+- `ads_mcp/tools/keyword_planner.py`
+  - **Pacer:** one process-wide lock spaces Keyword Planning calls at least
+    1.1 s apart, so parallel tool calls queue instead of racing Google's
+    per-second bucket.
+  - **Retry:** a quota rejection in either shape (`api_core.ResourceExhausted`
+    or `GoogleAdsException` with `QuotaError RESOURCE_EXHAUSTED` /
+    `RESOURCE_TEMPORARILY_EXHAUSTED`) is retried up to 3 attempts, waiting
+    Google's `retry_delay` when it sends one, else 2 s then 4 s. Waits above
+    30 s are reported, not slept.
+  - **Honest error:** the `ToolError` now states the quota facts (code, error
+    shape, Google's message, rate name/scope/retry_delay when present,
+    attempts, total wait, request ID) and says whether it is the per-second
+    RATE limit or the DAILY operations quota (a rejection whose rate name
+    mentions day/daily/operations and carries no short retry_delay). The
+    guidance tells the model to stop parallel calls and batch seeds.
+  - **Seed batching:** more than 20 seeds (the API's per-request cap) are sent
+    as consecutive batches of 20 through the pacer and merged, de-duplicated
+    on `keyword_text`. Empty seed lists are rejected before any API call.
+  - **Docstring:** a "RATE LIMIT — READ BEFORE CALLING" block for the model.
+- `pyproject.toml`: pytest now ignores macOS AppleDouble `._*` sidecars, which
+  break collection on an external volume (`--ignore-glob=*/._*`); run
+  `.venv/bin/python -m pytest -q tests --ignore=tests/smoke` or the nox session.
+- `tests/tools/keyword_planner_test.py` (new, 16 tests): pacing, retry after
+  `retry_delay`, default backoff, persistent rate limit wording, daily-quota
+  classification (no retry), long-delay bail-out, non-quota errors untouched,
+  bare-429 retry and wording, >20-seed batching + dedupe, empty seeds.
+- `tests/smoke/golden_tools_list.json` + `golden_resources_list.json`
+  regenerated under the resolved dependencies (fastmcp 4.0.0). Both smoke
+  golden tests were already failing at the previous HEAD with current deps
+  (fastmcp 4 changed the tools/resources listing shape); regenerated so the
+  smoke suite is green again.
+- `.gitignore`: `._*` (macOS AppleDouble files from external volumes).
+- `pyproject.toml`: version `0.0.1.post1+growme.3`.
+
+### Team action
+Reinstall to pick it up (uninstall first: the installer's notes record that
+`pipx install --force` over an existing venv has corrupted fastmcp before):
+`pipx uninstall google-ads-mcp && pipx install git+https://github.com/growmedevelopment/google-ads-mcp.git`
+(uv: `uv tool uninstall google-ads-mcp && uv tool install git+https://github.com/growmedevelopment/google-ads-mcp.git`),
+then fully restart Claude Desktop / Claude Code. The pacer is per MCP process
+(Desktop and Code each run their own) and the forecast server shares the MCC's
+bucket, which is what the retry is for; passing the client's own customer_id
+gives a research session its own per-CID bucket.
+Standard Access is **not** needed for this: it lifts the daily operations
+cap, which we use ~1% of, and does not change the planning per-second limit.
+
 ## OAuth migrated `growme-217600` → `growme-ads` (#517652724337) — 2026-05-20
 
 ### Why
