@@ -140,6 +140,34 @@ These instructions describe the process to configure the MCP server on either
 Create or edit the file at `~/.gemini/settings.json`, adding your server
     to the `mcpServers` list.
 
+> **Install the server once; do not launch it with `pipx run`.** The examples
+> below point `"command"` at an installed executable.
+>
+> ```
+> pipx install git+https://github.com/growmedevelopment/google-ads-mcp.git
+> ```
+>
+> Then get its full path and use that as `"command"`:
+>
+> ```
+> which google-ads-mcp                        # macOS / Linux
+> where google-ads-mcp                        # Windows (cmd)
+> (Get-Command google-ads-mcp).Source         # Windows (PowerShell)
+> ```
+>
+> On Windows write the path with forward slashes or escaped backslashes, e.g.
+> `"C:/Users/you/.local/bin/google-ads-mcp.exe"`.
+>
+> **Do not** use `pipx run --spec git+…` or `uvx --from git+…`. Those are
+> ephemeral runners: on a **cache miss** they resolve, download and build the
+> package from GitHub before the server begins importing. Measured here that is
+> **~30 s of build plus ~4 s of startup**, against **~2 s** for an installed
+> executable. `pipx` does cache the throwaway environment, but
+> [expires it after 14 days](https://pipx.pypa.io/latest/explanation/how-pipx-works.html),
+> so the cost recurs rather than being paid once. A client that allows a server
+> only a few seconds to answer `initialize` times out on such a start and reports
+> the server as down, which reads as a server fault and is not one.
+
 - Option 1: Using FastMCP OAuth Proxy (Streamable HTTP)
 
   You can run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8080/mcp`).
@@ -175,13 +203,8 @@ Create or edit the file at `~/.gemini/settings.json`, adding your server
     {
       "mcpServers": {
         "google-ads-mcp": {
-          "command": "pipx",
-          "args": [
-            "run",
-            "--spec",
-            "git+https://github.com/growmedevelopment/google-ads-mcp.git",
-            "google-ads-mcp"
-          ],
+          "command": "/ABSOLUTE/PATH/TO/google-ads-mcp",
+          "args": [],
           "env": {
             "GOOGLE_APPLICATION_CREDENTIALS": "PATH_TO_CREDENTIALS_JSON",
             "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",
@@ -198,13 +221,8 @@ Create or edit the file at `~/.gemini/settings.json`, adding your server
     {
       "mcpServers": {
         "google-ads-mcp": {
-          "command": "pipx",
-          "args": [
-            "run",
-            "--spec",
-            "git+https://github.com/growmedevelopment/google-ads-mcp.git",
-            "google-ads-mcp"
-          ],
+          "command": "/ABSOLUTE/PATH/TO/google-ads-mcp",
+          "args": [],
           "env": {
             "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",
             "GOOGLE_ADS_DEVELOPER_TOKEN": "YOUR_DEVELOPER_TOKEN"
@@ -227,13 +245,8 @@ The final file will look like this:
   {
     "mcpServers": {
       "google-ads-mcp": {
-        "command": "pipx",
-        "args": [
-          "run",
-          "--spec",
-          "git+https://github.com/growmedevelopment/google-ads-mcp.git",
-          "google-ads-mcp"
-        ],
+        "command": "/ABSOLUTE/PATH/TO/google-ads-mcp",
+        "args": [],
         "env": {
           "GOOGLE_APPLICATION_CREDENTIALS": "PATH_TO_CREDENTIALS_JSON",
           "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",

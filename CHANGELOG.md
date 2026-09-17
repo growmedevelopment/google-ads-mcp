@@ -5,6 +5,40 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## README launch command: ephemeral runner → installed executable — 2026-09-17
+
+### Fixed
+- **All three MCP-client config examples in `README.md` registered the server as
+  `pipx run --spec git+https://github.com/growmedevelopment/google-ads-mcp.git`.**
+  That is the wrong pattern for an MCP server. `pipx run` builds a throwaway venv
+  on a **cache miss**, and per pipx's docs that cached environment **expires after
+  14 days** (cache key: package name, spec, Python version, pip arguments), so the
+  cost recurs rather than being paid once. Measured here:
+
+  | launch method | time to serve `tools/list` |
+  |---|---|
+  | installed executable (what `ads-mcp-installer` writes) | 1.5 s warm, 2.3 s first run |
+  | `uvx --from git+…` cold cache / warm | 12.2 s / 1.8 s |
+  | cache-miss equivalent of `pipx run --spec git+…` (venv + resolve + build + install) | **~30 s**, then 3.9 s to boot |
+
+  A client that allows a server a few seconds to answer `initialize` times out on a
+  cache-miss start and reports the server as down, which reads as a server fault and
+  is not one. The examples now use `"command": "/ABSOLUTE/PATH/TO/google-ads-mcp"`
+  with `"args": []`, matching what `Code/marketing/ads-mcp-installer/install.py` has
+  always written, plus a note above them explaining why.
+
+### Measured, so nobody re-chases them
+- **Startup performs no network I/O.** The four `ads_mcp/resources/` fetchers call
+  `urllib.request.urlopen` inside their handlers, not at import.
+- **Broken credentials fail fast and name themselves**, so they cannot present as a
+  slow boot: a missing ADC file errors in **0.31 s**, a dead refresh token in
+  **2.96 s**. Credential validation being lazy means the tools still *register*, but
+  the first call returns promptly.
+
+Note for the next upstream merge: like the install-URL change in `+growme.4`, these
+three snippets are a deliberate fork divergence. Upstream still ships
+`pipx run --spec`. Keep the installed-executable form.
+
 ## 0.0.1.post1+growme.4 — 2026-09-02 — fix what +growme.3 missed (paging, classification, CI lint)
 
 An adversarial review of `+growme.3` (three refuters on the diagnosis, three
