@@ -31,8 +31,8 @@ diverge on.
 - **Startup performs no network I/O.** The four `ads_mcp/resources/` fetchers call
   `urllib.request.urlopen` inside their handlers, not at import.
 - **Broken credentials fail fast and name themselves**, so they cannot present as a
-  slow boot: a missing ADC file errors in **0.31 s**, a dead refresh token in
-  **2.96 s**. Credential validation being lazy means the tools still *register*, but
+  slow boot: across repeated runs a missing ADC file errors in **0.15-0.31 s** and a dead
+  refresh token in **1.5-3.0 s** (the spread is the token-endpoint round trip). Credential validation being lazy means the tools still *register*, but
   the first call returns promptly.
 
 Note for the next upstream merge: like the install-URL change in `+growme.4`, these
