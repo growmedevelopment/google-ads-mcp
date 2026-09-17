@@ -29,7 +29,10 @@ to provide several
 ## Notes
 
 1.  The MCP Server will expose your data to the Agent or LLM that you connect to it.
-1.  If you have technical issues, please use the [GitHub issue tracker](https://github.com/googleads/google-ads-mcp/issues).
+1.  If you have technical issues with this fork, please use its
+    [GitHub issue tracker](https://github.com/growmedevelopment/google-ads-mcp/issues).
+    For bugs in upstream's own code, use
+    [googleads/google-ads-mcp](https://github.com/googleads/google-ads-mcp/issues).
 1.  To help us collect usage data, you will notice an extra header has been added to your API calls: this data is used to improve the product.
 
 ## Setup instructions

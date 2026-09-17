@@ -27,6 +27,12 @@ diverge on.
   with `"args": []`, matching what `Code/marketing/ads-mcp-installer/install.py` has
   always written, plus a note above them explaining why.
 
+- **`README.md` sent bug reports to upstream's issue tracker** while
+  `pyproject.toml` already pointed `issues` at the fork. Anyone on our team
+  following the README would file a fork bug (e.g. against `list_customer_clients`
+  or the Keyword Planner pacer, neither of which upstream has) on Google's repo.
+  Now points at the fork, with upstream named for upstream's own code.
+
 ### Measured, so nobody re-chases them
 - **Startup performs no network I/O.** The four `ads_mcp/resources/` fetchers call
   `urllib.request.urlopen` inside their handlers, not at import.
