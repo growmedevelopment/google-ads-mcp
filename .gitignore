@@ -37,9 +37,13 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .nox/
-# GrowME fork: internal AI handoff lives at
-# Marketing/Google Ads/_internal-docs/google-ads-mcp-fork-handoff.md
+# GrowME fork: the internal AI handoff (AGENTS.md, its session history in
+# docs/HISTORY.md, and the CLAUDE.md pointer) stays on the team drive. It names
+# people, Slack threads and internal paths and is never published to this
+# public repo. AGENTS.md was previously excluded only through .git/info/exclude.
+AGENTS.md
 CLAUDE.md
+docs/HISTORY.md
 
 # GrowME fork: NEVER commit OAuth client secrets / ADC files that may be
 # dropped into the working tree during credential rotations. Real

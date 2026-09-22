@@ -49,6 +49,13 @@ Setup involves the following steps:
 
 [Install pipx](https://pipx.pypa.io/stable/#install-pipx).
 
+You also need the `git` command-line tool on the machine. The install source used
+below is a `git+https://…` URL, and pipx (like `uv tool install` and `pip install`)
+fetches it by shelling out to git; without git the install fails only after everything
+else has resolved (uv reports "Git executable not found"). Windows has no git by
+default: install [Git for Windows](https://git-scm.com/download/win). On macOS git
+comes with the Xcode Command Line Tools (`xcode-select --install`).
+
 ### Configure Developer Token
 
 Follow the instructions for [Obtaining a Developer Token](https://developers.google.com/google-ads/api/docs/get-started/dev-token).

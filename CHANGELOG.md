@@ -5,6 +5,32 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## README: git is a prerequisite of the `git+https` install; upgrade without `--force` — 2026-09-22
+
+### Changed
+- **`README.md` now says that installing from `git+https://…` needs the `git` CLI on the
+  machine.** pipx, `uv tool install` and pip all fetch that source by shelling out to git, and uv
+  stops with "Git executable not found" without it. A stock Windows machine has no git, and a
+  Mac without the Xcode Command Line Tools has only a shim that exits non-zero, so on both the
+  install failed after every other step had succeeded (a team member hit this 2026-09-22; the
+  team installer in `Code/marketing/ads-mcp-installer/` checks for git first since its 0.5.0).
+- **Upgrade instructions say uninstall, then install; never `--force`.** `pipx install --force`
+  reinstalls into the existing venv and has left `fastmcp` half-broken before (2026-05-20: the
+  2.x → 3.x split into `fastmcp` + `fastmcp-slim` namespace packages lost `fastmcp/__init__.py`
+  when old and new files were merged). The two-command form matches what the installer runs.
+- `.gitignore`: the fork's internal handoff notes (`AGENTS.md`, `docs/HISTORY.md`, the `CLAUDE.md`
+  pointer) are excluded here rather than only through the clone-local `.git/info/exclude`, so a
+  fresh clone cannot publish them by accident.
+
+### Recorded, so nobody re-chases it
+- Running the tests on Windows: `google-ads` ships a file path over 260 characters
+  (`.../v21/services/services/customer_sk_ad_network_conversion_value_schema_service/transports/grpc_asyncio.py`),
+  so `pip install` into a deeply nested venv fails with `[Errno 2]` when Windows long paths are
+  off, and the run then fails with `No module named 'google.ads.googleads.v24'`, which looks like a
+  library problem and is not one. A venv at a short path (for example `/tmp/google-ads-mcp/venv`
+  under Git Bash) installs cleanly: 49/49 tests, `black --check -l 80` clean, `google-ads` 32.0.0
+  (ships API v21 through v25).
+
 ## README launch command: ephemeral runner → installed executable — 2026-09-17
 
 ### Fixed
