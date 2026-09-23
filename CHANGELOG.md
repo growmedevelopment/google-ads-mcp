@@ -5,6 +5,43 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## `+growme.5` — the developer token is optional, as Google now treats it — 2026-09-23
+
+Google sunset Google Ads API developer tokens on 2026-09-09: the header is optional and
+ignored (a future major API version will reject it), and the access level plus the daily
+operations quota attach to the Google Cloud project behind the OAuth client, migrated from
+each token's level by 90-day call logs. Upstream made the same change in `e3a7169` the same
+day; this is the fork's equivalent, applied by hand because the two `utils.py` files have
+diverged.
+
+### Changed
+- **`GOOGLE_ADS_DEVELOPER_TOKEN` is no longer required.** `_get_developer_token()` returns
+  the variable or `None` instead of raising, and `_get_googleads_client()` only passes
+  `developer_token` when a value is present. Installs made before the sunset keep working
+  unchanged; new ones can drop the variable.
+- **`google-ads>=32.0.0`** (was `>=30.1.0`): the first client-library release whose
+  `GoogleAdsClient.__init__` accepts a missing token and stops validating for it. It still
+  ships API v21 through v25, so the fork's v24 imports are unaffected; 49/49 tests passed on
+  it before this change.
+- **Quota wording blames the right bucket.** `quota_tool_error_message` (search,
+  `list_customer_clients`) and the three `generate_keyword_ideas` quota explanations said
+  "the developer token's daily operations quota (15,000 on Basic Access)". It is now the
+  Cloud project's quota, "15,000 on Basic Access, unlimited on Standard", shared by every
+  OAuth client of that project. The per-second Keyword Planning limit and the retry advice
+  are unchanged.
+- `README.md`: the developer-token section explains the sunset and points at the Cloud
+  Console's Google Ads API → Overview page for the access level.
+
+### Added
+- Five tests in `tests/utils_test.py`: token read with and without the variable, client
+  built with and without the kwarg, the real `GoogleAdsClient` instantiated with no token,
+  and the quota message naming the project rather than a token.
+
+### Not changed, on purpose
+- The team installer still bundles and sets the token (older server builds refuse to start
+  without it). Dropping it from the bundle is the installer's follow-up, not this repo's.
+- API version stays v24; the v25 move belongs to the upstream merge.
+
 ## README: git is a prerequisite of the `git+https` install; upgrade without `--force` — 2026-09-22
 
 ### Changed

@@ -65,3 +65,74 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(formatted), 2)
         self.assertEqual(formatted[0].get("clicks"), "10")
         self.assertEqual(formatted[1].get("clicks"), "20")
+
+    def test_get_developer_token(self):
+        """Returns the env variable when set, None when unset (no raise)."""
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(utils._get_developer_token())
+
+        with patch.dict(
+            os.environ, {"GOOGLE_ADS_DEVELOPER_TOKEN": "test-dev-token"}
+        ):
+            self.assertEqual(utils._get_developer_token(), "test-dev-token")
+
+    def test_get_googleads_client_without_developer_token(self):
+        """Builds the client without a developer_token kwarg when unset."""
+        import os
+        from unittest.mock import MagicMock, patch
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(
+                utils, "_create_credentials", return_value=MagicMock()
+            ):
+                with patch("ads_mcp.utils.GoogleAdsClient") as mock_client:
+                    utils._get_googleads_client()
+                    mock_client.assert_called_once()
+                    _, kwargs = mock_client.call_args
+                    self.assertNotIn("developer_token", kwargs)
+
+    def test_get_googleads_client_with_developer_token(self):
+        """Passes developer_token through when the variable is set."""
+        import os
+        from unittest.mock import MagicMock, patch
+
+        with patch.dict(
+            os.environ,
+            {"GOOGLE_ADS_DEVELOPER_TOKEN": "test-dev-token"},
+            clear=True,
+        ):
+            with patch.object(
+                utils, "_create_credentials", return_value=MagicMock()
+            ):
+                with patch("ads_mcp.utils.GoogleAdsClient") as mock_client:
+                    utils._get_googleads_client()
+                    mock_client.assert_called_once()
+                    _, kwargs = mock_client.call_args
+                    self.assertEqual(
+                        kwargs.get("developer_token"), "test-dev-token"
+                    )
+
+    def test_get_googleads_client_instantiation_without_developer_token(self):
+        """The real GoogleAdsClient accepts a missing token (google-ads >= 32)."""
+        import os
+        from unittest.mock import patch
+        from google.auth.credentials import AnonymousCredentials
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(
+                utils,
+                "_create_credentials",
+                return_value=AnonymousCredentials(),
+            ):
+                client = utils._get_googleads_client()
+                self.assertIsNone(client.developer_token)
+
+    def test_quota_tool_error_message_names_the_project_quota(self):
+        """The quota explanation blames the Cloud project, not a developer token."""
+        msg = utils.quota_tool_error_message(Exception("429 boom"))
+        self.assertIn("Cloud project's daily", msg)
+        self.assertIn("15,000", msg)
+        self.assertNotIn("developer token", msg)

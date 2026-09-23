@@ -56,14 +56,16 @@ def _create_credentials() -> google.auth.credentials.Credentials:
     return credentials
 
 
-def _get_developer_token() -> str:
-    """Returns the developer token from the environment variable GOOGLE_ADS_DEVELOPER_TOKEN."""
-    dev_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
-    if dev_token is None:
-        raise ValueError(
-            "GOOGLE_ADS_DEVELOPER_TOKEN environment variable not set."
-        )
-    return dev_token
+def _get_developer_token() -> str | None:
+    """Returns the developer token from GOOGLE_ADS_DEVELOPER_TOKEN, if set.
+
+    Google sunset developer tokens on 2026-09-09: the header is optional and
+    ignored, and API access levels attach to the Cloud project behind the
+    OAuth client instead. Installs made before that date still set the
+    variable, so it is passed through when present and simply omitted when
+    not (upstream e3a7169 made the same change).
+    """
+    return os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
 
 
 def _get_login_customer_id() -> str | None:
@@ -74,9 +76,13 @@ def _get_login_customer_id() -> str | None:
 def _get_googleads_client() -> GoogleAdsClient:
     args = {
         "credentials": _create_credentials(),
-        "developer_token": _get_developer_token(),
         "use_proto_plus": True,
     }
+
+    # If the developer-token is not set, avoid setting None.
+    dev_token = _get_developer_token()
+    if dev_token:
+        args["developer_token"] = dev_token
 
     # If the login-customer-id is not set, avoid setting None.
     login_customer_id = _get_login_customer_id()
@@ -125,7 +131,7 @@ def quota_tool_error_message(ex) -> str:
     """Explains a bare HTTP 429 for tools that do not do their own quota
     handling.
 
-    Google answers both the developer token's daily operations quota and its
+    Google answers both the Cloud project's daily operations quota and its
     per-method rate limits with RESOURCE_EXHAUSTED, and the client library's
     ExceptionInterceptor short-circuits that status: it returns the raw
     RpcError without building a GoogleAdsException, which `wrap_method` then
@@ -135,8 +141,9 @@ def quota_tool_error_message(ex) -> str:
     clears in seconds (see the keyword_planner module docstring)."""
     return (
         f"Google Ads API quota error: {ex}. Google returns this same code for "
-        "a short-term rate limit and for the developer token's daily "
-        "operations quota (15,000 per sliding 24 hours on Basic Access), and "
+        "a short-term rate limit and for the Cloud project's daily "
+        "operations quota (15,000 per sliding 24 hours on Basic Access, "
+        "unlimited on Standard), and "
         "sent nothing here that separates them. A rate limit is far likelier "
         "and clears in seconds: stop issuing calls in parallel, wait a few "
         "seconds and try once more. Only if a single call still fails after "

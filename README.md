@@ -40,7 +40,7 @@ to provide several
 Setup involves the following steps:
 
 1.  Configure Python.
-1.  Configure Developer Token.
+1.  Configure Developer Token (optional).
 1.  Enable APIs in your project
 1.  Configure Credentials.
 1.  Configure your AI agent.
@@ -56,13 +56,19 @@ else has resolved (uv reports "Git executable not found"). Windows has no git by
 default: install [Git for Windows](https://git-scm.com/download/win). On macOS git
 comes with the Xcode Command Line Tools (`xcode-select --install`).
 
-### Configure Developer Token
+### Configure Developer Token (optional since 2026-09-09)
 
-Follow the instructions for [Obtaining a Developer Token](https://developers.google.com/google-ads/api/docs/get-started/dev-token).
+Google [sunset developer tokens on September 9, 2026](https://developers.google.com/google-ads/api/docs/api-policy/developer-token):
+the `developer-token` header is now optional and ignored, and your
+[API access level](https://developers.google.com/google-ads/api/docs/access-levels)
+(Test, Explorer, Basic or Standard, with its daily operations quota) attaches to the
+Google Cloud project that issued your OAuth credentials. View or request it in the
+Google Cloud Console under **Google Ads API → Overview**; the manager account's API
+Center page no longer issues tokens and may show a stale level.
 
-Make sure your developer token has at least [Explorer access](https://developers.google.com/google-ads/api/docs/api-policy/access-levels).
-
-Record your developer token, you will need this for the the 'Configure your AI agent' step below
+From `+growme.5` this server starts without `GOOGLE_ADS_DEVELOPER_TOKEN`. If the
+variable is set (every install made before the sunset sets it), the value is passed
+through and ignored by Google; you can remove it from your client config at any time.
 
 ### Enable APIs in your project
 
@@ -301,7 +307,7 @@ You can use Cloud Build to build and push the image to Artifact Registry without
 Make sure to set the required environment variables:
 
 - `GOOGLE_PROJECT_ID`: Your Google Cloud project ID.
-- `GOOGLE_ADS_DEVELOPER_TOKEN`: The developer token you want the MCP server to use (see above).
+- `GOOGLE_ADS_DEVELOPER_TOKEN`: (Optional, ignored by Google since 2026-09-09) The developer token you want the MCP server to send (see above).
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID`: The OAuth Client ID you want the MCP server to use.
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: The OAuth Client secret you want the MCP server to use.
 - `GOOGLE_ADS_MCP_BASE_URL`: The base URL where your MCP server is accessible: this will be automatically assigned by Google Cloud Run after your first deployment. You can update the environment variables after deployment. 

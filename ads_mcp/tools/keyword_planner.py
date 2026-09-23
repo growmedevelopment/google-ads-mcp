@@ -224,7 +224,7 @@ def _bare_429(ex: api_exceptions.ResourceExhausted) -> Dict[str, Any]:
     """Fallback shape for a quota rejection that carries no GoogleAdsFailure.
 
     Google answers BOTH the Keyword Planning per-second limit and the
-    developer token's daily operations cap with RESOURCE_EXHAUSTED, so when
+    Cloud project's daily operations cap with RESOURCE_EXHAUSTED, so when
     no failure detail rides along there is genuinely nothing in the response
     that distinguishes them and the caller must say so rather than guess."""
     return {
@@ -239,8 +239,9 @@ def _bare_429(ex: api_exceptions.ResourceExhausted) -> Dict[str, Any]:
 
 def _looks_like_daily_quota(info: Dict[str, Any]) -> bool:
     """Google uses RESOURCE_EXHAUSTED for both the planning rate limit and
-    the developer token's daily operations quota, so the response has to be
-    read carefully.
+    the Cloud project's daily operations quota (the bucket that belonged to
+    the developer token until Google's 2026-09-09 sunset), so the response
+    has to be read carefully.
 
     `rate_scope` is the field that actually separates them: the proto
     documents ACCOUNT as "Per customer account quota" and DEVELOPER as "Per
@@ -281,15 +282,16 @@ def _quota_tool_error(
     )
     if _looks_like_daily_quota(info):
         guidance = (
-            "This is the developer token's DAILY operations quota (15,000 "
-            "operations per day on Basic Access, shared by every user and app "
-            "on the token, over a sliding 24 hour window). Do not retry now; "
+            "This is the Cloud project's DAILY operations quota (15,000 "
+            "operations per day on Basic Access, unlimited on Standard, "
+            "shared by every user and app whose OAuth client belongs to the "
+            "project, over a sliding 24 hour window). Do not retry now; "
             "report the quota facts above to the user."
         )
     elif _is_ambiguous_quota(info):
         guidance = (
             "Google answers BOTH the Keyword Planning rate limit (1 request "
-            "per second per customer account) and the developer token's daily "
+            "per second per customer account) and the Cloud project's daily "
             "operations quota with this same code, and sent no rate name or "
             "scope here, so which one it was cannot be read off this response. "
             "The rate limit is far likelier: it is the one a burst of parallel "
@@ -390,9 +392,10 @@ def generate_keyword_ideas(
       - high_cpc:             float — top-of-page bid range high
 
     Quota note: each GenerateKeywordIdeas REQUEST counts as 1 operation
-    against the developer token's daily quota (15,000 per sliding 24 hours
-    on Basic Access, shared by everyone using the token), and a paged
-    response costs one operation per page. Typical keyword research uses
+    against the Cloud project's daily quota (15,000 per sliding 24 hours on
+    Basic Access, unlimited on Standard, shared by everyone whose OAuth
+    client belongs to the project), and a paged response costs one
+    operation per page. Typical keyword research uses
     well under 100 operations a day; the limit that actually bites is the
     per-second rate limit described above. The returned data is
     read-only — this tool never modifies any ad account.
