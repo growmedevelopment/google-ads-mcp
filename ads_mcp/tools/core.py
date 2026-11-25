@@ -15,7 +15,7 @@
 """Tools for exposing simple, core API methods to the MCP server."""
 
 from typing import Any, Dict, List, Optional
-from ads_mcp.coordinator import mcp
+from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from fastmcp.exceptions import ToolError
 
@@ -23,12 +23,14 @@ import ads_mcp.utils as utils
 
 from google.ads.googleads.errors import GoogleAdsException
 from google.api_core import exceptions as api_exceptions
-from google.ads.googleads.v24.services.types.customer_service import (
+from google.ads.googleads.v25.services.types.customer_service import (
     ListAccessibleCustomersResponse,
 )
 
+customers_mcp = FastMCP("customers")
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+
+@customers_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_accessible_customers() -> List[str]:
     """Returns customer IDs where the authenticating user has DIRECT access.
 
@@ -61,7 +63,7 @@ def list_accessible_customers() -> List[str]:
     ]
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@customers_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_customer_clients(
     manager_customer_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
@@ -102,7 +104,11 @@ def list_customer_clients(
             GOOGLE_ADS_LOGIN_CUSTOMER_ID is unset, or if the Google Ads
             API call fails.
     """
-    cid = manager_customer_id or utils._get_login_customer_id()
+    cid = (
+        utils.clean_customer_id(manager_customer_id)
+        if manager_customer_id
+        else utils._get_login_customer_id()
+    )
     if not cid:
         raise ToolError(
             "No manager_customer_id provided and GOOGLE_ADS_LOGIN_CUSTOMER_ID"

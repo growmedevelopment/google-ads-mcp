@@ -5,6 +5,89 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## `+growme.6` — merged upstream to v0.0.6, kept read-only — 2026-11-25 (branch `merge-upstream-2026-11`, not on `main` yet)
+
+Merged `googleads/google-ads-mcp` `main` at `44ca777` (v0.0.6, 104 upstream commits) so the
+server can be hosted for ChatGPT and claude.ai. Upstream now loads tools by namespace from
+`tools_config.yaml` and ships write tools; this fork keeps its read-only guarantee.
+
+### Added
+- **Read-only guarantee, two layers in `ads_mcp/coordinator.py`:**
+  1. At mount time, every version of every sub-server tool is checked; a name with any
+     version that is not `readOnlyHint=True`, or that is declared destructive, is dropped
+     whole, whatever `tools_config.yaml` or `GOOGLE_ADS_MCP_TOOLS_CONFIG` says. Upstream's
+     write tools (`labels_manage_labels`, `labels_manage_label_associations`,
+     `assets_create_asset`, `assets_upload_video_asset`) never mount.
+  2. `ReadOnlyGate` middleware binds every exposed name to the exact tool object mounted
+     for it (its sub-server, its name there, the object). `tools/call` runs a tool only
+     while FastMCP resolves that name to its own mounted-tool wrapper (exact type) around
+     that same read-only object, and `tools/list` shows only such tools; calls that select a
+     tool version are refused (the fork serves no versioned tools, and FastMCP runs the
+     version a request names). Stray registrations (on the parent server, on a sub-server
+     after mounting, through a nested server, a provider, a transform or a look-alike
+     subclass, under a new or an allowed name) never run; a shadowed allowed name may stay
+     listed, but its calls are refused. Ordinary FastMCP transforms applied to a bundled
+     tool (a description change, a namespace) also make it refuse calls: it fails closed.
+  **Scope:** this protects against MCP clients and stray registrations. Code running inside
+  the server process (middleware that rewrites a request after the gate, edits to a tool
+  object, a monkeypatched lookup) is trusted, as with any installed package; round 3 showed
+  such code can bypass any in-process check.
+  `tests/growme_read_only_test.py`, 7 cases: bundled config; mutate namespaces on; a config
+  with no namespaces; mutate tools enabled one by one; writable tools injected at runtime;
+  a writable version called by version, a read-only-labelled takeover of `search`, a
+  look-alike subclass of the mounted-tool wrapper and a late replacement on a sub-server
+  (marker file proves no injected body ran); and layer 1 on its own (the write tools are
+  gone from their sub-servers). Each layer's test fails with that layer switched off.
+  Independent review rounds wrote their own attacks: round 1 (39 variants, about 120
+  refused calls), round 2 (43 scenarios; found the version and takeover paths), round 3
+  (96 client-side attacks over in-memory, task and raw HTTP JSON-RPC paths, all refused,
+  network blocked; found the look-alike subclass, now closed) and round 4 (the same 96
+  refused again plus settings, config, protocol-version, concurrency and transform
+  variants; nothing serious or moderate).
+- **`keywords` namespace** for `generate_keyword_ideas` (added to `ALL_CATEGORIES`).
+
+### Changed
+- **Tool names stay as before.** The bundled `tools_config.yaml` mounts `customers`,
+  `search`, `metadata` and `keywords` with an empty prefix, so the tools are still `search`,
+  `get_resource_metadata`, `list_accessible_customers`, `list_customer_clients` and
+  `generate_keyword_ideas` (upstream would name them `search_search` and so on). `labels`
+  and `assets` are off.
+- `list_customer_clients` moved onto upstream's `customers` sub-server and
+  `generate_keyword_ideas` onto a new `keywords` sub-server, replacing the old
+  `from ads_mcp.coordinator import mcp` registration.
+- `search` keeps the fork's quota explanation for HTTP 429 after upstream's
+  `format_google_ads_error` for `GoogleAdsException`.
+- Requirements follow upstream: **Python >= 3.11** (was 3.10), `google-ads>=33.0.0`,
+  `mcp[cli]>=2.0.0,<3`, `fastmcp[tasks]>=4.0.6,<5`; optional `[firestore]` extra. API v25.
+- `list_customer_clients` cleans a dashed `manager_customer_id` (`123-456-7890`) before the
+  query, as the environment-variable path already did.
+- Removed upstream's `.github/workflows/release.yml` and `docs/releasing.md` (they publish the PyPI name
+  `google-ads-mcp`, which is upstream's, and reject the `+growme` version); README and CONTRIBUTING install lines point
+  at this fork's GitHub source; the `llm-tests`
+  CI job is off (`if: false`) because `tests/smoke/llm_cases.json` expects upstream's names
+  and write tools.
+- README: upstream's new layout plus a fork notice (read-only, extra tools, unprefixed
+  names, install-once advice, this fork's issue tracker); the tools table marks the mutate
+  rows as not mounted; install steps and the stdio client example point at this fork's
+  installed executable (upstream's pointed at `pipx run` of upstream, which serves the write
+  tools), with the login customer ID and the optional developer token.
+
+### Gained from upstream (relevant to hosting)
+- OAuth tokens are no longer logged (`httpx` at WARNING, uvicorn access log off).
+- Persistent OAuth state (`GOOGLE_ADS_MCP_STORAGE_*`: filetree, redis, firestore, memory)
+  and `GOOGLE_ADS_MCP_JWT_SIGNING_KEY`, so restarts do not drop client registrations.
+- Cross-client Streamable HTTP fixes and the `subscriptions/listen` compatibility handler;
+  structured audit records of tool calls.
+
+### Tests
+- 156 tests, 2 skipped, black clean (CI's commands, FastMCP 4.2.6, mcp 2.3.0, google-ads
+  35.1.0). Adapted for the fork: `schema_test` looks up `search`; `tools_mounting_test`
+  asserts no mutate tool is mounted; two `audit_test` cases that need upstream's mutate tools
+  on the real server are skipped, and the OAuth audit privacy case is ported to `search`
+  (`test_growme_oauth_actor_excludes_pii_on_read_tool`); `subscriptions_compat_test` accepts FastMCP's native
+  `subscriptions/listen` (upstream's own suite fails that case on FastMCP 4.2.6). The smoke
+  reference lists were regenerated from this server.
+
 ## `+growme.5` — the developer token is optional, as Google now treats it — 2026-09-23
 
 Google sunset Google Ads API developer tokens on 2026-09-09: the header is optional and

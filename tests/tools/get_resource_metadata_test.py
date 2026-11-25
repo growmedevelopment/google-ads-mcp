@@ -102,10 +102,10 @@ class TestGetResourceMetadata(unittest.TestCase):
 
     @patch("ads_mcp.utils.get_googleads_service")
     @patch("ads_mcp.utils.get_googleads_type")
-    def test_get_resource_metadata_metrics_failure_still_returns_attributes(
+    def test_get_resource_metadata_metrics_failure(
         self, mock_get_type, mock_get_service
     ):
-        """Tests that if metrics query fails, we still return attributes."""
+        """Tests that a RuntimeError is raised if the metrics/segments query fails."""
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
 
@@ -121,9 +121,13 @@ class TestGetResourceMetadata(unittest.TestCase):
             Exception("Metrics Fail"),
         ]
 
-        result = get_resource_metadata.get_resource_metadata("campaign")
+        with self.assertRaises(RuntimeError) as cm:
+            get_resource_metadata.get_resource_metadata("campaign")
 
-        self.assertIn("campaign.id", result["selectable"])
+        self.assertIn(
+            "API call to search_google_ads_fields failed: Metrics Fail",
+            str(cm.exception),
+        )
 
     @patch("ads_mcp.utils.get_googleads_service")
     @patch("ads_mcp.utils.get_googleads_type")
@@ -149,6 +153,25 @@ class TestGetResourceMetadata(unittest.TestCase):
         self.assertIn(
             "API call to search_google_ads_fields failed: Fail 2",
             str(cm.exception),
+        )
+
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.get_googleads_type")
+    def test_get_resource_metadata_with_login_customer_id(
+        self, mock_get_type, mock_get_service
+    ):
+        """Tests that get_resource_metadata forwards login_customer_id to get_googleads_service."""
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+        mock_get_type.return_value = MagicMock()
+        mock_service.search_google_ads_fields.side_effect = [[], []]
+
+        get_resource_metadata.get_resource_metadata(
+            "campaign", login_customer_id="999-888-7777"
+        )
+
+        mock_get_service.assert_called_once_with(
+            "GoogleAdsFieldService", login_customer_id="999-888-7777"
         )
 
 

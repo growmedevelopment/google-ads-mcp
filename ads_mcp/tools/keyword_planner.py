@@ -51,7 +51,7 @@ import threading
 import time
 from typing import Any, Dict, List, Optional
 
-from ads_mcp.coordinator import mcp
+from fastmcp import FastMCP
 from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 import ads_mcp.utils as utils
@@ -566,11 +566,14 @@ def _one_rpc_with_retry(call, customer_id: str, skip_first_wait: bool = False):
     raise _quota_tool_error(last_quota, attempt, waited_total, last_request_id)
 
 
-# Register with FastMCP. Mirrors the search-tool registration pattern in
-# tools/search.py. readOnlyHint=True lets MCP-aware clients (Claude
-# Desktop) display this as a read-only tool, no consent prompt for
-# mutation-style risk.
-mcp.add_tool(
+# Register on the "keywords" sub-server (GrowME fork), which
+# coordinator.initialize_and_mount_tools discovers and mounts like the
+# upstream namespaces; tools_config.yaml must list "keywords". Mirrors the
+# search-tool registration pattern in tools/search.py. readOnlyHint=True lets
+# MCP-aware clients show this as a read-only tool.
+keywords_mcp = FastMCP("keywords")
+
+keywords_mcp.add_tool(
     Tool.from_function(
         generate_keyword_ideas,
         annotations=ToolAnnotations(readOnlyHint=True),

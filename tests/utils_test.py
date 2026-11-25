@@ -15,10 +15,11 @@
 """Test cases for the utils module."""
 
 import unittest
-from google.ads.googleads.v24.enums.types.campaign_status import (
+from google.ads.googleads.v25.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
-from google.ads.googleads.v24.common.types.metrics import Metrics
+from google.ads.googleads.v25.common.types.metrics import Metrics
+from google.protobuf.field_mask_pb2 import FieldMask
 
 from ads_mcp import utils
 
@@ -66,8 +67,115 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(formatted[0].get("clicks"), "10")
         self.assertEqual(formatted[1].get("clicks"), "20")
 
+    def test_format_output_value_bare_protobuf(self):
+        """Tests that bare protobuf messages are formatted correctly."""
+        fm = FieldMask(paths=["foo", "bar"])
+        formatted = utils.format_output_value(fm)
+        self.assertEqual(formatted, "foo,bar")
+
+    def test_prevent_stdio_inheritance(self):
+        """Tests that prevent_stdio_inheritance sets stdin to DEVNULL if not specified."""
+        import subprocess
+        from unittest.mock import MagicMock, patch
+        from ads_mcp.utils import prevent_stdio_inheritance
+
+        mock_popen = MagicMock()
+        with patch("subprocess.Popen", mock_popen):
+            with prevent_stdio_inheritance():
+                subprocess.Popen(["mock_cmd"])
+
+        mock_popen.assert_called_once_with(
+            ["mock_cmd"], stdin=subprocess.DEVNULL
+        )
+
+    def test_prevent_stdio_inheritance_explicit_stdin(self):
+        """Tests that prevent_stdio_inheritance preserves explicit stdin."""
+        import subprocess
+        from unittest.mock import MagicMock, patch
+        from ads_mcp.utils import prevent_stdio_inheritance
+
+        mock_popen = MagicMock()
+        with patch("subprocess.Popen", mock_popen):
+            with prevent_stdio_inheritance():
+                subprocess.Popen(["mock_cmd"], stdin=subprocess.PIPE)
+
+        mock_popen.assert_called_once_with(["mock_cmd"], stdin=subprocess.PIPE)
+
+    def test_clean_customer_id(self):
+        """Tests that clean_customer_id strips non-digit characters from various inputs."""
+        self.assertEqual(utils.clean_customer_id("1234567890"), "1234567890")
+        self.assertEqual(utils.clean_customer_id(1234567890), "1234567890")
+        self.assertEqual(utils.clean_customer_id("123-456-7890"), "1234567890")
+        self.assertEqual(
+            utils.clean_customer_id(" 123-456-7890 "), "1234567890"
+        )
+        self.assertEqual(
+            utils.clean_customer_id("customers/1234567890"), "1234567890"
+        )
+        self.assertEqual(utils.clean_customer_id(""), "")
+
+    def test_get_login_customer_id(self):
+        """Tests that _get_login_customer_id resolves from parameter or env variable and sanitizes."""
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(utils._get_login_customer_id())
+            self.assertEqual(
+                utils._get_login_customer_id("999-888-7777"), "9998887777"
+            )
+            self.assertEqual(
+                utils._get_login_customer_id(9998887777), "9998887777"
+            )
+
+        with patch.dict(
+            os.environ, {"GOOGLE_ADS_LOGIN_CUSTOMER_ID": "123-456-7890"}
+        ):
+            self.assertEqual(utils._get_login_customer_id(), "1234567890")
+            # Explicit argument takes precedence over environment variable
+            self.assertEqual(
+                utils._get_login_customer_id("999-888-7777"), "9998887777"
+            )
+
+    def test_get_googleads_client_with_login_customer_id(self):
+        """Tests that _get_googleads_client passes login_customer_id when provided or set in env."""
+        import os
+        from unittest.mock import MagicMock, patch
+
+        with patch.dict(
+            os.environ,
+            {"GOOGLE_ADS_LOGIN_CUSTOMER_ID": "111-222-3333"},
+            clear=True,
+        ):
+            with patch.object(
+                utils, "_create_credentials", return_value=MagicMock()
+            ):
+                with patch("ads_mcp.utils.GoogleAdsClient") as mock_client:
+                    utils._get_googleads_client(
+                        login_customer_id="444-555-6666"
+                    )
+                    mock_client.assert_called_once()
+                    _, kwargs = mock_client.call_args
+                    self.assertEqual(
+                        kwargs.get("login_customer_id"), "4445556666"
+                    )
+
+    def test_get_googleads_service_passes_login_customer_id(self):
+        """Tests that get_googleads_service forwards login_customer_id to _get_googleads_client."""
+        from unittest.mock import MagicMock, patch
+
+        with patch.object(
+            utils, "_get_googleads_client", return_value=MagicMock()
+        ) as mock_get_client:
+            utils.get_googleads_service(
+                "GoogleAdsService", login_customer_id="123-456-7890"
+            )
+            mock_get_client.assert_called_once_with(
+                login_customer_id="123-456-7890"
+            )
+
     def test_get_developer_token(self):
-        """Returns the env variable when set, None when unset (no raise)."""
+        """Tests that _get_developer_token returns env variable or None if unset."""
         import os
         from unittest.mock import patch
 
@@ -80,7 +188,7 @@ class TestUtils(unittest.TestCase):
             self.assertEqual(utils._get_developer_token(), "test-dev-token")
 
     def test_get_googleads_client_without_developer_token(self):
-        """Builds the client without a developer_token kwarg when unset."""
+        """Tests that _get_googleads_client succeeds without developer_token when unset."""
         import os
         from unittest.mock import MagicMock, patch
 
@@ -95,7 +203,7 @@ class TestUtils(unittest.TestCase):
                     self.assertNotIn("developer_token", kwargs)
 
     def test_get_googleads_client_with_developer_token(self):
-        """Passes developer_token through when the variable is set."""
+        """Tests that _get_googleads_client passes developer_token when set."""
         import os
         from unittest.mock import MagicMock, patch
 
@@ -116,7 +224,7 @@ class TestUtils(unittest.TestCase):
                     )
 
     def test_get_googleads_client_instantiation_without_developer_token(self):
-        """The real GoogleAdsClient accepts a missing token (google-ads >= 32)."""
+        """Tests that _get_googleads_client successfully instantiates GoogleAdsClient when dev token is unset."""
         import os
         from unittest.mock import patch
         from google.auth.credentials import AnonymousCredentials
@@ -136,3 +244,85 @@ class TestUtils(unittest.TestCase):
         self.assertIn("Cloud project's daily", msg)
         self.assertIn("15,000", msg)
         self.assertNotIn("developer token", msg)
+
+    def test_extract_id(self):
+        """Tests that extract_id extracts the trailing segment from resource names."""
+        self.assertEqual(
+            utils.extract_id("customers/1234567890/assets/456"), "456"
+        )
+        self.assertEqual(
+            utils.extract_id("customers/1234567890/campaignLabels/456~789"),
+            "456~789",
+        )
+        self.assertEqual(utils.extract_id(""), "")
+
+    def test_is_remote_oauth_mode(self):
+        """Tests remote OAuth mode detection based on OAuth client env vars."""
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(utils.is_remote_oauth_mode())
+
+        with patch.dict(
+            os.environ,
+            {"GOOGLE_ADS_MCP_OAUTH_CLIENT_ID": "only-id"},
+            clear=True,
+        ):
+            self.assertFalse(utils.is_remote_oauth_mode())
+
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_ADS_MCP_OAUTH_CLIENT_ID": "cid",
+                "GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET": "csecret",
+            },
+            clear=True,
+        ):
+            self.assertTrue(utils.is_remote_oauth_mode())
+
+    def test_format_google_ads_error(self):
+        """Tests formatting of GoogleAdsException into readable error messages."""
+        from unittest.mock import MagicMock
+        from google.ads.googleads.errors import GoogleAdsException
+        from google.ads.googleads.v25.errors.types.errors import (
+            ErrorCode,
+            GoogleAdsError,
+            GoogleAdsFailure,
+        )
+        from google.ads.googleads.v25.errors.types.request_error import (
+            RequestErrorEnum,
+        )
+
+        failure = GoogleAdsFailure(
+            errors=[
+                GoogleAdsError(
+                    error_code=ErrorCode(
+                        request_error=RequestErrorEnum.RequestError.UNKNOWN
+                    ),
+                    message="Something went wrong.",
+                )
+            ]
+        )
+        ex = GoogleAdsException(
+            error=MagicMock(),
+            call=MagicMock(),
+            failure=type(failure).pb(failure),
+            request_id="req-999",
+        )
+        formatted = utils.format_google_ads_error(ex)
+        self.assertIn("Request ID: req-999", formatted)
+        self.assertIn("Something went wrong.", formatted)
+
+    def test_get_googleads_service_from_client_attaches_interceptor(self):
+        """Tests that get_googleads_service_from_client attaches MCPHeaderInterceptor."""
+        from unittest.mock import MagicMock
+        from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
+
+        mock_client = MagicMock()
+        utils.get_googleads_service_from_client(mock_client, "AssetService")
+        mock_client.get_service.assert_called_once()
+        args, kwargs = mock_client.get_service.call_args
+        self.assertEqual(args[0], "AssetService")
+        self.assertEqual(len(kwargs["interceptors"]), 1)
+        self.assertIsInstance(kwargs["interceptors"][0], MCPHeaderInterceptor)

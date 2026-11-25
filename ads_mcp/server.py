@@ -14,18 +14,15 @@
 
 """Entry point for the MCP server."""
 
+import os
+
 from ads_mcp.coordinator import mcp
 
-# The following imports are necessary to register the tools with the `mcp`
+# The following imports are necessary to register the resources with the `mcp`
 # object, even though they are not directly used in this file.
+# Tools are loaded dynamically via reflection in coordinator.py.
 # The `# noqa: F401` comment tells the linter to ignore the "unused import"
 # warning.
-from ads_mcp.tools import (  # noqa: F401
-    search,
-    core,
-    get_resource_metadata,
-    keyword_planner,  # GrowME fork addition — generate_keyword_ideas
-)
 from ads_mcp.resources import (
     discovery,
     metrics,
@@ -34,16 +31,18 @@ from ads_mcp.resources import (
 )  # noqa: F401
 
 
-import os
-
-
 def run_server() -> None:
     _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
     _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
     port = int(os.environ.get("PORT", "8080"))
 
     if _CLIENT_ID and _CLIENT_SECRET:
-        mcp.run(transport="streamable-http", port=port, host="0.0.0.0")
+        mcp.run(
+            transport="streamable-http",
+            port=port,
+            host="0.0.0.0",
+            uvicorn_config={"access_log": False},
+        )
     else:
         mcp.run()
 

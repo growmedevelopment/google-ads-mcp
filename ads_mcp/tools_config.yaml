@@ -1,0 +1,19 @@
+# tools_config.yaml
+#
+# Tools configuration for the Google Ads MCP server (GrowME fork).
+# Modify this file to enable/disable tool namespaces or set custom prefixes.
+#
+# GrowME fork: an empty string enables a namespace with NO prefix, so the tools
+# keep the names the team, the installer and the org skill already use
+# (search, list_accessible_customers, list_customer_clients,
+# get_resource_metadata, generate_keyword_ideas). Upstream's write namespaces
+# (labels, assets) are off, and coordinator.py refuses to mount any tool that
+# is not read-only even if they are switched on here.
+
+namespaces:
+  customers: ""
+  search: ""
+  metadata: ""
+  keywords: ""
+  labels: false
+  assets: false

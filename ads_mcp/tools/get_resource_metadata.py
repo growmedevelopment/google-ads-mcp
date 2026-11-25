@@ -15,13 +15,18 @@
 """Tools for fetching metadata for Google Ads resources."""
 
 from typing import Any, Dict
-from ads_mcp.coordinator import mcp
+from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 import ads_mcp.utils as utils
 
+metadata_mcp = FastMCP("metadata")
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_resource_metadata(resource_name: str) -> Dict[str, Any]:
+
+@metadata_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def get_resource_metadata(
+    resource_name: str,
+    login_customer_id: str | int | None = None,
+) -> Dict[str, Any]:
     """Retrieves the selectable, filterable, and sortable fields for a specific Google Ads resource,
     including compatible metrics and segments.
 
@@ -37,8 +42,11 @@ def get_resource_metadata(resource_name: str) -> Dict[str, Any]:
 
     Args:
         resource_name: The name of the Google Ads resource (e.g., 'campaign', 'ad_group').
+        login_customer_id: Optional manager customer ID to use as the login-customer-id header.
     """
-    ga_service = utils.get_googleads_service("GoogleAdsFieldService")
+    ga_service = utils.get_googleads_service(
+        "GoogleAdsFieldService", login_customer_id=login_customer_id
+    )
     request = utils.get_googleads_type("SearchGoogleAdsFieldsRequest")
 
     selectable = set()
@@ -97,7 +105,10 @@ def get_resource_metadata(resource_name: str) -> Dict[str, Any]:
             if field.sortable:
                 sortable.add(field.name)
     except Exception as e:
-        utils.logger.warning(f"Failed metrics/segments query: {e}")
+        utils.logger.error(f"Failed metrics/segments query: {e}")
+        raise RuntimeError(
+            f"API call to search_google_ads_fields failed: {e}"
+        ) from e
 
     return {
         "resource": resource_name,

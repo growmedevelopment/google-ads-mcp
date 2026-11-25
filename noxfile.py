@@ -15,7 +15,7 @@
 import nox
 import sys
 
-PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
+PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14"]
 
 TEST_COMMAND = [
     "coverage",
@@ -34,6 +34,8 @@ FREEZE_COMMAND = [sys.executable, "-m", "pip", "freeze"]
 TEST_DEPENDENCIES = [
     "pyfakefs>=5.0.0,<6.0",
     "coverage==6.5.0",
+    # Lets the firestore storage backend tests run instead of being skipped.
+    "py-key-value-aio[firestore] >=0.4.5, <0.5.0",
 ]
 
 

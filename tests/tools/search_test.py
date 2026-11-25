@@ -69,6 +69,88 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(results[0]["id"], 1)
         self.assertEqual(results[1]["name"], "C2")
 
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_row")
+    def test_search_with_int_customer_id(
+        self, mock_format_row, mock_get_service
+    ):
+        """Tests that integer customer_id is sanitized to string of digits."""
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        mock_batch = MagicMock()
+        mock_batch.results = []
+        mock_batch.field_mask.paths = ["campaign.id"]
+        mock_service.search_stream.return_value = [mock_batch]
+
+        search.search(
+            customer_id=1234567890,
+            fields=["campaign.id"],
+            resource="campaign",
+        )
+
+        mock_service.search_stream.assert_called_once_with(
+            customer_id="1234567890",
+            query="SELECT campaign.id FROM campaign PARAMETERS omit_unselected_resource_names=true",
+        )
+
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_row")
+    def test_search_with_hyphenated_customer_id(
+        self, mock_format_row, mock_get_service
+    ):
+        """Tests that hyphenated string customer_id is sanitized to string of digits."""
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        mock_batch = MagicMock()
+        mock_batch.results = []
+        mock_batch.field_mask.paths = ["campaign.id"]
+        mock_service.search_stream.return_value = [mock_batch]
+
+        search.search(
+            customer_id="123-456-7890",
+            fields=["campaign.id"],
+            resource="campaign",
+        )
+
+        mock_get_service.assert_called_once_with(
+            "GoogleAdsService", login_customer_id=None
+        )
+        mock_service.search_stream.assert_called_once_with(
+            customer_id="1234567890",
+            query="SELECT campaign.id FROM campaign PARAMETERS omit_unselected_resource_names=true",
+        )
+
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_row")
+    def test_search_with_login_customer_id(
+        self, mock_format_row, mock_get_service
+    ):
+        """Tests that search forwards login_customer_id to get_googleads_service."""
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        mock_batch = MagicMock()
+        mock_batch.results = []
+        mock_batch.field_mask.paths = ["campaign.id"]
+        mock_service.search_stream.return_value = [mock_batch]
+
+        search.search(
+            customer_id="123-456-7890",
+            fields=["campaign.id"],
+            resource="campaign",
+            login_customer_id="999-888-7777",
+        )
+
+        mock_get_service.assert_called_once_with(
+            "GoogleAdsService", login_customer_id="999-888-7777"
+        )
+        mock_service.search_stream.assert_called_once_with(
+            customer_id="1234567890",
+            query="SELECT campaign.id FROM campaign PARAMETERS omit_unselected_resource_names=true",
+        )
+
     def test_search_tool_description(self):
         """Tests that the tool description is generated correctly."""
         # Mocking open as if the file exists
@@ -81,6 +163,7 @@ class TestSearch(unittest.TestCase):
                 description = search._search_tool_description()
                 self.assertIn("resource1: field1, field2", description)
                 self.assertIn("Language Grammar", description)
+                self.assertIn("Hints for historical metrics", description)
 
     def test_search_tool_description_file_not_found(self):
         """Tests that the tool description handles missing file correctly."""

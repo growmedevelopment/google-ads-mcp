@@ -55,21 +55,17 @@ nox -s format
     nox -s tests*
     ```
 
-### Test using Gemini
+### Test using Antigravity
 
-To test changes by issuing prompts in Gemini, modify the `command` for the
-`ads-mcp` entry in your `~/.gemini/settings.json` file so Gemini runs the
-server using your local source files.
+To test changes by issuing prompts in Antigravity, configure the `google-ads-mcp` entry in your Antigravity client configuration (refer to the docs at [https://antigravity.google/docs/mcp](https://antigravity.google/docs/mcp)) so Antigravity runs the server using your local source files.
 
-Replace `PATH_TO_REPO` in the following snippet with the path where you cloned
-the repo:
+Replace `PATH_TO_REPO` in the following snippet with the path where you cloned the repo:
 
 ```
       "command": "PATH_TO_REPO/.venv/bin/google-ads-mcp",
 ```
 
-When running the `gemini` command from a terminal, add the `--debug` option so
-Gemini outputs debug information as it processes prompts.
+When running the `agy` command from a terminal, add the `--debug` option so Antigravity outputs debug information as it processes prompts.
 
 ### Test from GitHub
 
@@ -89,10 +85,16 @@ branch named `awesome-feature-42` in this repo:
         "run",
         "--no-cache",
         "--spec",
-        "git+https://github.com/googleads/google-ads-mcp.git@awesome-feature-42",
+        "git+https://github.com/growmedevelopment/google-ads-mcp.git@awesome-feature-42",
         "google-ads-mcp"
       ]
     }
   }
 }
 ```
+
+## Publishing releases
+
+This GrowME fork is not published to PyPI (the PyPI name `google-ads-mcp`
+belongs to upstream). Team machines install it from this repository's GitHub
+source; upstream's release guide and PyPI workflow were removed from the fork.

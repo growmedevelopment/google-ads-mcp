@@ -21,13 +21,20 @@ from google.genai import Client
 from google.genai import errors
 from tests.smoke import smoke_utils
 
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+
 
 def _strip_additional_properties(schema: dict) -> dict:
     """Recursively removes 'additionalProperties' and 'additional_properties' from the schema."""
     if not isinstance(schema, dict):
         return schema
     for key, value in list(schema.items()):
-        if key in ("additionalProperties", "additional_properties"):
+        if key in (
+            "additionalProperties",
+            "additional_properties",
+            "x-fastmcp-wrap-result",
+            "title",
+        ):
             del schema[key]
         elif isinstance(value, dict):
             _strip_additional_properties(value)
@@ -39,12 +46,17 @@ def _strip_additional_properties(schema: dict) -> dict:
 
 
 def get_llm_response(
-    prompt: str | list, tools: list, include_usage: bool = False
+    prompt: str | list,
+    tools: list,
+    include_usage: bool = False,
+    model: str | None = None,
 ) -> str | dict:
     """Sends a prompt to the LLM with the given tools and returns the tool usage."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY environment variable not set.")
+
+    model_name = model or DEFAULT_MODEL
 
     # Inject customer ID if placeholder is present (only for string prompts)
     if isinstance(prompt, str):
@@ -64,7 +76,7 @@ def get_llm_response(
         # Gemini FunctionDeclaration: {name, description, parameters}
         # Truncate description to avoid hitting token limits with massive tool docs
         description = tool.get("description", "")
-        if tool["name"] == "search":
+        if tool["name"] in ("search", "search_search"):
             description = "Search for Google Ads resources such as campaigns, ad groups, keywords, and metrics using Google Ads Query Language (GAQL). Use this tool to find objects by name or status."
         elif len(description) > 1024:
             description = description[:1024] + "..."
@@ -81,20 +93,25 @@ def get_llm_response(
         function_declarations.append(fd)
 
     llm_tools = [types.Tool(function_declarations=function_declarations)]
+    tool_config = types.ToolConfig(
+        function_calling_config=types.FunctionCallingConfig(mode="ANY")
+    )
 
     max_retries = 5
     base_delay = 2
 
     # Sleep to respect rate limits
-    time.sleep(5)
+    time.sleep(2)
 
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
-                model="gemini-flash-latest",
+                model=model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    tools=llm_tools, temperature=0.0
+                    tools=llm_tools,
+                    tool_config=tool_config,
+                    temperature=0.0,
                 ),
             )
 
@@ -117,7 +134,7 @@ def get_llm_response(
                                 0,
                             ),
                         },
-                        "model": "gemini-flash-latest",
+                        "model": model_name,
                     }
                 return None
 
@@ -154,17 +171,18 @@ def get_llm_response(
                     "tool_name": selected_tool,
                     "tool_args": tool_args,
                     "usage": usage,
-                    "model": "gemini-flash-latest",
+                    "model": model_name,
                 }
 
             return selected_tool
 
-        except errors.ClientError as e:
-            if e.code == 429:
+        except (errors.ClientError, errors.ServerError) as e:
+            code = getattr(e, "code", None)
+            if code in (429, 503) or "high demand" in str(e).lower():
                 if attempt < max_retries - 1:
                     delay = base_delay * (2**attempt)
                     print(
-                        f"Rate limited. Retrying in {delay} seconds...",
+                        f"Temporary API error ({code}). Retrying in {delay} seconds...",
                         file=sys.stderr,
                     )
                     time.sleep(delay)
@@ -172,15 +190,16 @@ def get_llm_response(
             raise e
 
 
-def count_tokens(contents) -> int:
+def count_tokens(contents, model: str | None = None) -> int:
     """Counts the number of tokens in the given content using the LLM backend."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY environment variable not set.")
 
+    model_name = model or DEFAULT_MODEL
     client = Client(api_key=api_key)
     response = client.models.count_tokens(
-        model="gemini-flash-latest",
+        model=model_name,
         contents=contents,
     )
     return response.total_tokens
