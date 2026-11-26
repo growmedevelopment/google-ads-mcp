@@ -12,7 +12,9 @@ COPY . .
 
 # Install the project and its dependencies
 # We use --system to install into the system Python environment in the container
-RUN uv pip install --system .
+# GrowME fork: with the firestore extra, so OAuth state can live in Firestore
+# (GOOGLE_ADS_MCP_STORAGE_TYPE=firestore) and survive Cloud Run restarts.
+RUN uv pip install --system ".[firestore]"
 
 # Codex CLI 0.146 reports the RFC 9207 `iss` value as missing from the local
 # OAuth callback, even though FastMCP constructs the redirect with `iss` and

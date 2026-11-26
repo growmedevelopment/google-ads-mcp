@@ -59,6 +59,7 @@ server can be hosted for ChatGPT and claude.ai. Upstream now loads tools by name
   `format_google_ads_error` for `GoogleAdsException`.
 - Requirements follow upstream: **Python >= 3.11** (was 3.10), `google-ads>=33.0.0`,
   `mcp[cli]>=2.0.0,<3`, `fastmcp[tasks]>=4.0.6,<5`; optional `[firestore]` extra. API v25.
+- `Dockerfile` installs the `[firestore]` extra, for Cloud Run with OAuth state in Firestore.
 - `list_customer_clients` cleans a dashed `manager_customer_id` (`123-456-7890`) before the
   query, as the environment-variable path already did.
 - Removed upstream's `.github/workflows/release.yml` and `docs/releasing.md` (they publish the PyPI name
