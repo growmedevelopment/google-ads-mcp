@@ -5,6 +5,24 @@ This file tracks GrowME's modifications on top of upstream
 their commit history; this file only records what we add, change, or
 diverge on.
 
+## `+growme.7` — redirect allowlist for hosted deployments — 2026-11-25
+
+A security check of the hosted copy (Cloud Run) found that any website could register an
+OAuth client whose redirect URI is its own site (`POST /register` answered 201 for
+`https://evil.example/cb`). The approval page names that address, but a phishing link
+could still get a GrowME user to approve, giving the site read access to the Google Ads
+accounts that user can see.
+
+### Added
+- `GOOGLE_ADS_MCP_ALLOWED_CLIENT_REDIRECT_URIS` (comma-separated FastMCP patterns) is passed to
+  `GoogleProvider(allowed_client_redirect_uris=...)`, which applies it to dynamic client
+  registration, client ID metadata documents, the approval page and `/authorize`. Unset keeps
+  FastMCP's default (any redirect), so local installs are unchanged.
+- `tests/growme_redirect_allowlist_test.py`: ChatGPT, Claude and loopback redirects register;
+  an outside site and eight look-alikes (sub-domain, user-info, path, query, http, dot-segment)
+  are refused; `/authorize` refuses an unlisted redirect for a listed client; control: with the
+  setting unset an outside redirect registers.
+
 ## `+growme.6` — merged upstream to v0.0.6, kept read-only — 2026-11-25 (branch `merge-upstream-2026-11`, not on `main` yet)
 
 Merged `googleads/google-ads-mcp` `main` at `44ca777` (v0.0.6, 104 upstream commits) so the

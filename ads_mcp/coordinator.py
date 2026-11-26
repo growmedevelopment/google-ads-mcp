@@ -44,6 +44,13 @@ _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
 _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
 _BASE_URL = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080")
 _JWT_SIGNING_KEY = os.environ.get("GOOGLE_ADS_MCP_JWT_SIGNING_KEY")
+# GrowME fork: comma-separated redirect URI patterns MCP clients may register
+# and be sent back to (FastMCP wildcards, e.g. "https://chatgpt.com/connector/oauth/*").
+# Unset keeps FastMCP's default (any redirect URI); a hosted server should set it,
+# or anyone can register a client that returns sign-ins to their own site.
+_ALLOWED_CLIENT_REDIRECT_URIS = os.environ.get(
+    "GOOGLE_ADS_MCP_ALLOWED_CLIENT_REDIRECT_URIS"
+)
 
 if _CLIENT_ID and _CLIENT_SECRET:
     client_storage = create_client_storage()
@@ -60,6 +67,12 @@ if _CLIENT_ID and _CLIENT_SECRET:
     }
     if _JWT_SIGNING_KEY:
         provider_kwargs["jwt_signing_key"] = _JWT_SIGNING_KEY
+    if _ALLOWED_CLIENT_REDIRECT_URIS is not None:
+        provider_kwargs["allowed_client_redirect_uris"] = [
+            pattern.strip()
+            for pattern in _ALLOWED_CLIENT_REDIRECT_URIS.split(",")
+            if pattern.strip()
+        ]
     if client_storage is not None:
         provider_kwargs["client_storage"] = client_storage
 

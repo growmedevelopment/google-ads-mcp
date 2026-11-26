@@ -7,6 +7,7 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that e
 > - Two extra read-only tools: `list_customer_clients` (every account under a manager/MCC account, via the `customer_client` resource) and `generate_keyword_ideas` (Keyword Planner ideas with historical metrics, paced and quota-aware).
 > - The bundled `tools_config.yaml` mounts the read namespaces **without a prefix** (`search`, `get_resource_metadata`, `list_accessible_customers`, `list_customer_clients`, `generate_keyword_ideas`) and turns upstream's mutate namespaces (`labels`, `assets`) off.
 > - `ads_mcp/coordinator.py` refuses to mount any tool that does not declare `readOnlyHint=True`, whatever the config file or `GOOGLE_ADS_MCP_TOOLS_CONFIG` says, and a `ReadOnlyGate` middleware serves only the exact tools mounted at startup (no tool versions). The mutate tools and the Propose & Confirm workflow described below therefore never reach a client of this fork. Code running inside the server process is trusted and out of scope.
+> - Hosted (Streamable HTTP) deployments should set `GOOGLE_ADS_MCP_ALLOWED_CLIENT_REDIRECT_URIS` to the MCP clients they serve (see the environment variables below); otherwise any website can register as a client.
 > - A `tools_config.yaml` in the directory the server is launched from replaces the bundled one (upstream behaviour). It cannot enable a write tool here, but it can change which of the read-only tools appear, so launch the server from a directory without one.
 > - Install it once (`pipx install git+https://github.com/growmedevelopment/google-ads-mcp.git`, or `uv tool install`) and point your client at the installed executable; the `git+https` source needs the `git` command-line tool. Do not launch it with `pipx run --spec git+…` or `uvx --from git+…`: on a cache miss those rebuild from GitHub before the server answers `initialize` (about 30 s), and some clients time out.
 > - Report problems with this fork on [its issue tracker](https://github.com/growmedevelopment/google-ads-mcp/issues); bugs in upstream's own code belong [upstream](https://github.com/googleads/google-ads-mcp/issues).
@@ -251,6 +252,7 @@ Audit records can also be persisted to `filetree`, `redis`, `firestore`, or `mem
 | `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET` | Google Cloud OAuth 2.0 Client Secret. |
 | `GOOGLE_ADS_MCP_BASE_URL` | Public base URL of the HTTP server (default: `http://localhost:8080`). |
 | `GOOGLE_ADS_MCP_JWT_SIGNING_KEY` | Recommended for multi-instance or persistent HTTP deployments to sign FastMCP JWTs consistently. |
+| `GOOGLE_ADS_MCP_ALLOWED_CLIENT_REDIRECT_URIS` | GrowME fork. Comma-separated redirect URI patterns (FastMCP wildcards, e.g. `https://chatgpt.com/connector/oauth/*`, `http://localhost:*`) that MCP clients may register and be sent back to. Unset accepts any redirect URI, so on a public deployment anyone could register a client that returns sign-ins to their own site: set it. |
 
 #### OAuth State & Audit Persistence
 
